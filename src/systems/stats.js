@@ -62,13 +62,20 @@ export class Stats {
     this.eggs = 0;
     this.spentEggs = 0;
 
+    this.trainingActions = 0;
+    this.totalEggsLaid = 0;
+
     this.multipliers = {
       gain: 1,
       recovery: 1,
+      strength: 1,
+      stamina: 1,
+      speed: 1,
     };
 
     this.passiveStaminaRegen = 0;
     this.stamina = this.getMaxStamina();
+    this.cosmetics = new Set();
   }
 
   static get STAT_CONFIG() {
@@ -92,19 +99,19 @@ export class Stats {
   }
 
   getStrengthValue() {
-    return 1 + this.levels.strength;
+    return (1 + this.levels.strength) * this.multipliers.strength;
   }
 
   getStaminaCapacity() {
-    return 10 + this.levels.stamina;
+    return Math.round((10 + this.levels.stamina) * this.multipliers.stamina);
   }
 
   getRecoveryValue() {
-    return 1 + this.levels.recovery * 0.1;
+    return (1 + this.levels.recovery * 0.02) * this.multipliers.recovery;
   }
 
   getSpeedValue() {
-    return 1 + this.levels.speed * 0.5;
+    return (1 + this.levels.speed * 0.5) * this.multipliers.speed;
   }
 
   getGainsPerTick() {
@@ -116,7 +123,7 @@ export class Stats {
   }
 
   getRestRatePerSecond() {
-    return this.getRecoveryValue() * 0.5 * this.multipliers.recovery;
+    return this.getRecoveryValue() * 0.5;
   }
 
   getMaxStamina() {
@@ -209,6 +216,34 @@ export class Stats {
 
   getPassiveStaminaRegen() {
     return this.passiveStaminaRegen;
+  }
+
+  recordTrainingAction(count = 1) {
+    this.trainingActions += count;
+  }
+
+  recordEggsLaid(amount) {
+    if (amount > 0) {
+      this.totalEggsLaid += amount;
+    }
+  }
+
+  multiplyStatMultiplier(stat, factor) {
+    if (!(stat in this.multipliers)) {
+      return;
+    }
+    this.multipliers[stat] *= factor;
+    if (stat === "stamina") {
+      this.stamina = Math.min(this.stamina, this.getMaxStamina());
+    }
+  }
+
+  unlockCosmetic(name) {
+    this.cosmetics.add(name);
+  }
+
+  getCosmetics() {
+    return Array.from(this.cosmetics.values());
   }
 
   getGainsPerHourEstimate() {

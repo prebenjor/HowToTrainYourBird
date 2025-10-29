@@ -10,6 +10,7 @@ export class PrestigeSystem {
   prestige() {
     const eggsEarned = this.stats.getPrestigeEggs();
     this.stats.eggs += eggsEarned;
+    this.stats.recordEggsLaid(eggsEarned);
     this.stats.resetForPrestige();
     return eggsEarned;
   }
