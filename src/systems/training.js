@@ -45,6 +45,7 @@ export class TrainingSystem {
     if (!this.resting) {
       while (this.tickAccumulator >= 1) {
         if (this.stats.consumeStamina(1)) {
+          this.stats.recordTrainingAction();
           const gains = this.stats.getGainsPerTick();
           this.stats.addGains(gains);
           this.onTick({ gains, stamina: this.stats.stamina });

@@ -1,11 +1,12 @@
 import { formatNumber } from "../systems/gamble.js";
 
 export class GamblePanel {
-  constructor(root, gambleSystem, stats, onChange = () => {}) {
+  constructor(root, gambleSystem, stats, { onChange = () => {}, onAttempt = () => {} } = {}) {
     this.root = root;
     this.gambleSystem = gambleSystem;
     this.stats = stats;
     this.onChange = onChange;
+    this.onAttempt = onAttempt;
     this.selectedMultiplier = 2;
     this.build();
   }
@@ -47,8 +48,10 @@ export class GamblePanel {
     this.actionButton.addEventListener("click", () => {
       const stake = Number(this.stakeInput.value);
       const result = this.gambleSystem.attempt(this.selectedMultiplier, stake);
+      const enrichedResult = { ...result, multiplier: this.selectedMultiplier, stake };
       if (!result.success) {
         this.pushLog(result.reason);
+        this.onAttempt(enrichedResult);
         return;
       }
       if (result.won) {
@@ -57,6 +60,7 @@ export class GamblePanel {
         this.pushLog(`Ouch! Lost ${formatNumber(-result.delta)} Gains.`);
       }
       this.onChange();
+      this.onAttempt(enrichedResult);
       this.renderLog();
     });
 

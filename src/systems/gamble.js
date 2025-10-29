@@ -19,15 +19,15 @@ export class GambleSystem {
   attempt(multiplier, stake) {
     const config = MULTIPLIERS[multiplier];
     if (!config) {
-      return { success: false, reason: "Invalid multiplier." };
+      return { success: false, reason: "Invalid multiplier.", multiplier, stake };
     }
 
     if (stake <= 0) {
-      return { success: false, reason: "Stake must be positive." };
+      return { success: false, reason: "Stake must be positive.", multiplier, stake };
     }
 
     if (!this.stats.spendGains(stake)) {
-      return { success: false, reason: "Not enough gains to stake." };
+      return { success: false, reason: "Not enough gains to stake.", multiplier, stake };
     }
 
     const roll = Math.random();
@@ -45,7 +45,7 @@ export class GambleSystem {
       : `Lost ${formatNumber(stake)} Gains on x${multiplier}`;
     this.pushLog(entry);
 
-    return { success: true, won: success, delta };
+    return { success: true, won: success, delta, multiplier, stake };
   }
 
   pushLog(message) {
