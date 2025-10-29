@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How to Train Your Bird</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f0f4ff;
+        --panel: #ffffff;
+        --accent: #5a8dee;
+        --accent-strong: #ff7a59;
+        --text: #2c2f3a;
+        --muted: #5f6480;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Baloo 2", cursive;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px;
+        gap: 24px;
+      }
+
+      header {
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 2.4rem;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        margin-top: 4px;
+        font-size: 1.1rem;
+      }
+
+      main {
+        width: min(1100px, 100%);
+        display: grid;
+        gap: 18px;
+      }
+
+      .panels {
+        display: grid;
+        gap: 18px;
+      }
+
+      @media (min-width: 960px) {
+        .panels {
+          grid-template-columns: 2fr 1fr;
+        }
+      }
+
+      .panel {
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 12px 30px rgba(46, 74, 129, 0.08);
+      }
+
+      .panel h2 {
+        margin: 0 0 12px 0;
+        font-size: 1.5rem;
+      }
+
+      .stats-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(90, 141, 238, 0.08);
+      }
+
+      .stat-label {
+        font-weight: 600;
+      }
+
+      .stat-value {
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .progress-bar {
+        position: relative;
+        width: 100%;
+        height: 14px;
+        border-radius: 7px;
+        background: rgba(90, 141, 238, 0.2);
+        overflow: hidden;
+      }
+
+      .progress-bar-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+        transition: width 0.2s ease;
+      }
+
+      button {
+        font-family: inherit;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--accent);
+        color: white;
+        box-shadow: 0 8px 18px rgba(76, 110, 184, 0.25);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        background: #cad6ff;
+        box-shadow: none;
+      }
+
+      button:not(:disabled):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 26px rgba(76, 110, 184, 0.35);
+      }
+
+      .upgrades {
+        display: grid;
+        gap: 12px;
+      }
+
+      .upgrade-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .upgrade-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .upgrade-title {
+        font-weight: 700;
+      }
+
+      .upgrade-subtitle {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .layout-split {
+        display: grid;
+        gap: 18px;
+      }
+
+      @media (min-width: 960px) {
+        .layout-split {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      .chip-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: rgba(90, 141, 238, 0.18);
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+
+      .chip.selected {
+        background: var(--accent);
+        color: white;
+      }
+
+      input[type="number"] {
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 2px solid rgba(90, 141, 238, 0.3);
+        font-family: inherit;
+        font-size: 1rem;
+        width: 100%;
+      }
+
+      .log {
+        max-height: 160px;
+        overflow-y: auto;
+        padding-right: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .log-entry {
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+
+      .prestige-actions {
+        display: grid;
+        gap: 12px;
+      }
+
+      .egg-upgrades {
+        display: grid;
+        gap: 8px;
+      }
+
+      .egg-upgrade {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(255, 122, 89, 0.12);
+      }
+
+      .egg-upgrade-title {
+        font-weight: 700;
+      }
+
+      footer {
+        margin-top: auto;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>How to Train Your Bird</h1>
+      <p class="subtitle">Become the most shredded birb in gym history.</p>
+    </header>
+    <main>
+      <section class="panels">
+        <article class="panel" id="stats-panel"></article>
+        <article class="panel" id="progress-panel"></article>
+      </section>
+
+      <section class="layout-split">
+        <article class="panel" id="upgrades-panel"></article>
+        <article class="panel" id="gamble-panel"></article>
+      </section>
+
+      <section class="panel" id="prestige-panel"></section>
+    </main>
+    <footer>v0.1.0 &mdash; Prototype idle gains.</footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
