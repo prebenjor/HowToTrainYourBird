@@ -7,7 +7,7 @@ import { StatsPanel, ProgressPanel } from "./ui/StatsPanel.js";
 import { UpgradeMenu } from "./ui/UpgradeMenu.js";
 import { GamblePanel } from "./ui/GambleModal.js";
 import { PrestigePanel } from "./ui/PrestigePanel.js";
-import { AchievementsPanel } from "./ui/AchievementsPanel.js";
+import { AchievementsPanel } from "./ui/screens/AchievementsPanel.js";
 import { BirdDisplay } from "./ui/BirdDisplay.js";
 import { Hud } from "./ui/hud/Hud.js";
 
