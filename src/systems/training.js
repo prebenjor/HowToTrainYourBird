@@ -151,7 +151,11 @@ export class TrainingSystem {
     }
 
     const ticksPerSecond = this.stats.getTicksPerSecond();
-    this.tickAccumulator += deltaSeconds * ticksPerSecond;
+    if (this.resting) {
+      this.tickAccumulator = 0;
+    } else {
+      this.tickAccumulator += deltaSeconds * ticksPerSecond;
+    }
 
     const passiveRate = this.stats.getPassiveStaminaRegen();
     this.passiveAccumulator += deltaSeconds * passiveRate;
