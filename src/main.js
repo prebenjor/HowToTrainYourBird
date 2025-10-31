@@ -20,6 +20,9 @@ const router = new Router({
   defaultRoute: "dashboard",
 });
 
+const UI_BOOTSTRAP_MAX_ATTEMPTS = 40;
+const UI_BOOTSTRAP_RETRY_DELAY_MS = 50;
+
 let achievementsPanel;
 let trainingSystem;
 let hud;
@@ -29,6 +32,8 @@ let birdDisplayPanel;
 let upgradesPanel;
 let prestigePanel;
 let uiReady = false;
+let bootstrapAttempts = 0;
+let bootstrapTimeoutId = null;
 
 const gambleSystem = new GambleSystem(stats);
 const prestigeSystem = new PrestigeSystem(stats);
@@ -42,48 +47,60 @@ const achievementSystem = new AchievementSystem(stats, (achievement) => {
   }
 });
 
-function initializeUI() {
-  const topNavElement = document.getElementById("top-nav");
-  const statsPanelElement = document.getElementById("stats-panel");
-  const progressPanelElement = document.getElementById("progress-panel");
-  const birdDisplayElement = document.getElementById("bird-display");
-  const upgradesPanelElement = document.getElementById("upgrades-panel");
-  const gamblePanelElement = document.getElementById("gamble-panel");
-  const prestigePanelElement = document.getElementById("prestige-panel");
-  const achievementsPanelElement = document.getElementById("achievements-panel");
-  const hudRootElement = document.getElementById("hud-root");
+function collectUIRoots() {
+  return {
+    topNav: document.getElementById("top-nav"),
+    statsPanel: document.getElementById("stats-panel"),
+    progressPanel: document.getElementById("progress-panel"),
+    birdDisplay: document.getElementById("bird-display"),
+    upgradesPanel: document.getElementById("upgrades-panel"),
+    gamblePanel: document.getElementById("gamble-panel"),
+    prestigePanel: document.getElementById("prestige-panel"),
+    achievementsPanel: document.getElementById("achievements-panel"),
+    hudRoot: document.getElementById("hud-root"),
+  };
+}
 
-  if (!topNavElement) {
-    console.error("Unable to initialize navigation: #top-nav was not found.");
-    return;
+function setupUI() {
+  if (uiReady) {
+    return true;
   }
 
-  new TopNavTabs(topNavElement, router, [
+  const roots = collectUIRoots();
+
+  if (!roots.topNav) {
+    if (bootstrapAttempts === 0) {
+      console.warn("UI bootstrap waiting for navigation container (#top-nav).");
+    }
+    return false;
+  }
+
+  const missingRootEntries = Object.entries(roots)
+    .filter(([key, element]) => key !== "topNav" && !element)
+    .map(([key]) => key);
+
+  if (missingRootEntries.length > 0) {
+    if (bootstrapAttempts === 0) {
+      console.warn(
+        "UI bootstrap waiting for root panel containers:",
+        missingRootEntries.join(", ")
+      );
+    }
+    return false;
+  }
+
+  new TopNavTabs(roots.topNav, router, [
     { id: "dashboard", label: "Overview", panelId: "screen-dashboard" },
     { id: "development", label: "Training & Gamble", panelId: "screen-development" },
     { id: "legacy", label: "Legacy Progress", panelId: "screen-legacy" },
   ]);
 
-  if (
-    !statsPanelElement ||
-    !progressPanelElement ||
-    !birdDisplayElement ||
-    !upgradesPanelElement ||
-    !gamblePanelElement ||
-    !prestigePanelElement ||
-    !achievementsPanelElement ||
-    !hudRootElement
-  ) {
-    console.error("Unable to initialize UI: one or more root elements are missing.");
-    return;
-  }
+  statsPanel = new StatsPanel(roots.statsPanel, stats);
+  progressPanel = new ProgressPanel(roots.progressPanel, stats);
+  birdDisplayPanel = new BirdDisplay(roots.birdDisplay, stats);
+  upgradesPanel = new UpgradeMenu(roots.upgradesPanel, stats, updateUI);
 
-  statsPanel = new StatsPanel(statsPanelElement, stats);
-  progressPanel = new ProgressPanel(progressPanelElement, stats);
-  birdDisplayPanel = new BirdDisplay(birdDisplayElement, stats);
-  upgradesPanel = new UpgradeMenu(upgradesPanelElement, stats, updateUI);
-
-  new GamblePanel(gamblePanelElement, gambleSystem, stats, {
+  new GamblePanel(roots.gamblePanel, gambleSystem, stats, {
     onChange: updateUI,
     onAttempt: (result) => {
       if (result.success) {
@@ -94,7 +111,7 @@ function initializeUI() {
   });
 
   prestigePanel = new PrestigePanel(
-    prestigePanelElement,
+    roots.prestigePanel,
     stats,
     prestigeSystem,
     (eggs) => {
@@ -104,8 +121,11 @@ function initializeUI() {
     updateUI
   );
 
-  achievementsPanel = new AchievementsPanel(achievementsPanelElement, achievementSystem);
-  hud = new Hud(hudRootElement, stats);
+  achievementsPanel = new AchievementsPanel(
+    roots.achievementsPanel,
+    achievementSystem
+  );
+  hud = new Hud(roots.hudRoot, stats);
 
   trainingSystem = new TrainingSystem(stats, {
     onTick: () => updateUI(),
@@ -133,6 +153,7 @@ function initializeUI() {
   trainingSystem.start();
   uiReady = true;
   updateUI();
+  return true;
 }
 
 function updateUI() {
@@ -151,8 +172,37 @@ function updateUI() {
   }
 }
 
+function scheduleUIBootstrap() {
+  if (uiReady) {
+    return;
+  }
+
+  if (setupUI()) {
+    return;
+  }
+
+  if (bootstrapAttempts >= UI_BOOTSTRAP_MAX_ATTEMPTS) {
+    console.error(
+      "Unable to initialize UI: required elements were not found after waiting."
+    );
+    return;
+  }
+
+  if (bootstrapTimeoutId !== null) {
+    return;
+  }
+
+  bootstrapTimeoutId = window.setTimeout(() => {
+    bootstrapTimeoutId = null;
+    bootstrapAttempts += 1;
+    scheduleUIBootstrap();
+  }, UI_BOOTSTRAP_RETRY_DELAY_MS);
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeUI, { once: true });
+  document.addEventListener("DOMContentLoaded", scheduleUIBootstrap, {
+    once: true,
+  });
 } else {
-  initializeUI();
+  scheduleUIBootstrap();
 }
