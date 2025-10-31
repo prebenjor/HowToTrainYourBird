@@ -20,15 +20,21 @@ const router = new Router({
   defaultRoute: "dashboard",
 });
 
-new TopNavTabs(document.getElementById("top-nav"), router, [
-  { id: "dashboard", label: "Overview", panelId: "screen-dashboard" },
-  { id: "development", label: "Training & Gamble", panelId: "screen-development" },
-  { id: "legacy", label: "Legacy Progress", panelId: "screen-legacy" },
-]);
+const UI_BOOTSTRAP_MAX_ATTEMPTS = 40;
+const UI_BOOTSTRAP_RETRY_DELAY_MS = 50;
 
 let achievementsPanel;
 let trainingSystem;
 let hud;
+let statsPanel;
+let progressPanel;
+let birdDisplayPanel;
+let upgradesPanel;
+let prestigePanel;
+let uiReady = false;
+let bootstrapAttempts = 0;
+let bootstrapTimeoutId = null;
+
 const gambleSystem = new GambleSystem(stats);
 const prestigeSystem = new PrestigeSystem(stats);
 const achievementSystem = new AchievementSystem(stats, (achievement) => {
@@ -36,63 +42,124 @@ const achievementSystem = new AchievementSystem(stats, (achievement) => {
   if (achievementsPanel) {
     achievementsPanel.notifyUnlock(achievement);
   }
+  if (uiReady) {
+    updateUI();
+  }
 });
 
-const statsPanel = new StatsPanel(document.getElementById("stats-panel"), stats);
-const progressPanel = new ProgressPanel(document.getElementById("progress-panel"), stats);
-const birdDisplayPanel = new BirdDisplay(document.getElementById("bird-display"), stats);
-const upgradesPanel = new UpgradeMenu(document.getElementById("upgrades-panel"), stats, updateUI);
-new GamblePanel(document.getElementById("gamble-panel"), gambleSystem, stats, {
-  onChange: updateUI,
-  onAttempt: (result) => {
-    if (result.success) {
-      achievementSystem.recordGamble(result.multiplier, result.won);
+function collectUIRoots() {
+  return {
+    topNav: document.getElementById("top-nav"),
+    statsPanel: document.getElementById("stats-panel"),
+    progressPanel: document.getElementById("progress-panel"),
+    birdDisplay: document.getElementById("bird-display"),
+    upgradesPanel: document.getElementById("upgrades-panel"),
+    gamblePanel: document.getElementById("gamble-panel"),
+    prestigePanel: document.getElementById("prestige-panel"),
+    achievementsPanel: document.getElementById("achievements-panel"),
+    hudRoot: document.getElementById("hud-root"),
+  };
+}
+
+function setupUI() {
+  if (uiReady) {
+    return true;
+  }
+
+  const roots = collectUIRoots();
+
+  if (!roots.topNav) {
+    if (bootstrapAttempts === 0) {
+      console.warn("UI bootstrap waiting for navigation container (#top-nav).");
+    }
+    return false;
+  }
+
+  const missingRootEntries = Object.entries(roots)
+    .filter(([key, element]) => key !== "topNav" && !element)
+    .map(([key]) => key);
+
+  if (missingRootEntries.length > 0) {
+    if (bootstrapAttempts === 0) {
+      console.warn(
+        "UI bootstrap waiting for root panel containers:",
+        missingRootEntries.join(", ")
+      );
+    }
+    return false;
+  }
+
+  new TopNavTabs(roots.topNav, router, [
+    { id: "dashboard", label: "Overview", panelId: "screen-dashboard" },
+    { id: "development", label: "Training & Gamble", panelId: "screen-development" },
+    { id: "legacy", label: "Legacy Progress", panelId: "screen-legacy" },
+  ]);
+
+  statsPanel = new StatsPanel(roots.statsPanel, stats);
+  progressPanel = new ProgressPanel(roots.progressPanel, stats);
+  birdDisplayPanel = new BirdDisplay(roots.birdDisplay, stats);
+  upgradesPanel = new UpgradeMenu(roots.upgradesPanel, stats, updateUI);
+
+  new GamblePanel(roots.gamblePanel, gambleSystem, stats, {
+    onChange: updateUI,
+    onAttempt: (result) => {
+      if (result.success) {
+        achievementSystem.recordGamble(result.multiplier, result.won);
+        updateUI();
+      }
+    },
+  });
+
+  prestigePanel = new PrestigePanel(
+    roots.prestigePanel,
+    stats,
+    prestigeSystem,
+    (eggs) => {
+      gambleSystem.pushLog(`Laid ${eggs} egg(s)! New generation unlocked.`);
       updateUI();
-    }
-  },
-});
-const prestigePanel = new PrestigePanel(
-  document.getElementById("prestige-panel"),
-  stats,
-  prestigeSystem,
-  (eggs) => {
-    gambleSystem.pushLog(`Laid ${eggs} egg(s)! New generation unlocked.`);
-    updateUI();
-  },
-  updateUI
-);
-achievementsPanel = new AchievementsPanel(
-  document.getElementById("achievements-panel"),
-  achievementSystem
-);
-hud = new Hud(document.getElementById("hud-root"), stats);
+    },
+    updateUI
+  );
 
-trainingSystem = new TrainingSystem(stats, {
-  onTick: () => updateUI(),
-  onRestChange: (resting) => {
-    progressPanel.setResting(resting);
-    birdDisplayPanel.setResting(resting);
-  },
-  onPowerUpActivated: (result) => {
-    if (!result?.applied) {
-      return;
-    }
-    const activation = result.activation ?? {};
-    const icon = activation.presentation?.icon ?? "✨";
-    const verb =
-      result.type === "stacked"
-        ? "stacked"
-        : result.type === "refreshed"
-        ? "refreshed"
-        : "activated";
-    gambleSystem.pushLog(`${icon} ${activation.name ?? "Power-Up"} ${verb}!`);
-    updateUI();
-  },
-});
+  achievementsPanel = new AchievementsPanel(
+    roots.achievementsPanel,
+    achievementSystem
+  );
+  hud = new Hud(roots.hudRoot, stats);
 
-trainingSystem.start();
+  trainingSystem = new TrainingSystem(stats, {
+    onTick: () => updateUI(),
+    onRestChange: (resting) => {
+      progressPanel.setResting(resting);
+      birdDisplayPanel.setResting(resting);
+    },
+    onPowerUpActivated: (result) => {
+      if (!result?.applied) {
+        return;
+      }
+      const activation = result.activation ?? {};
+      const icon = activation.presentation?.icon ?? "✨";
+      const verb =
+        result.type === "stacked"
+          ? "stacked"
+          : result.type === "refreshed"
+          ? "refreshed"
+          : "activated";
+      gambleSystem.pushLog(`${icon} ${activation.name ?? "Power-Up"} ${verb}!`);
+      updateUI();
+    },
+  });
+
+  trainingSystem.start();
+  uiReady = true;
+  updateUI();
+  return true;
+}
 
 function updateUI() {
+  if (!uiReady) {
+    return;
+  }
   achievementSystem.update();
   statsPanel.update();
   progressPanel.update();
@@ -105,4 +172,37 @@ function updateUI() {
   }
 }
 
-updateUI();
+function scheduleUIBootstrap() {
+  if (uiReady) {
+    return;
+  }
+
+  if (setupUI()) {
+    return;
+  }
+
+  if (bootstrapAttempts >= UI_BOOTSTRAP_MAX_ATTEMPTS) {
+    console.error(
+      "Unable to initialize UI: required elements were not found after waiting."
+    );
+    return;
+  }
+
+  if (bootstrapTimeoutId !== null) {
+    return;
+  }
+
+  bootstrapTimeoutId = window.setTimeout(() => {
+    bootstrapTimeoutId = null;
+    bootstrapAttempts += 1;
+    scheduleUIBootstrap();
+  }, UI_BOOTSTRAP_RETRY_DELAY_MS);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", scheduleUIBootstrap, {
+    once: true,
+  });
+} else {
+  scheduleUIBootstrap();
+}
