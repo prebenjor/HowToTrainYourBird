@@ -163,6 +163,15 @@ export class Stats {
     this.stamina = this.getMaxStamina();
     this.cosmetics = new Set();
 
+    this.activePowerUps = [];
+    this.powerUpModifiers = {
+      gainMultiplier: 1,
+      restRateMultiplier: 1,
+      staminaCostMultiplier: 1,
+      tickRateMultiplier: 1,
+      flatGains: 0,
+    };
+
     this.activityMastery = {};
     Object.keys(ACTIVITY_CATALOG).forEach((key) => {
       this.activityMastery[key] = { level: 0, progress: 0 };
@@ -418,6 +427,7 @@ export class Stats {
     this.gains = 0;
     this.runGains = 0;
     this.stamina = this.getMaxStamina();
+    this.clearPowerUps();
     Object.keys(this.activityMastery).forEach((key) => {
       this.activityMastery[key] = { level: 0, progress: 0 };
     });
@@ -449,7 +459,11 @@ export class Stats {
   }
 
   getGainsPerTick() {
-    return BASE_GAIN * this.getStrengthValue() * this.multipliers.gain;
+    const base = BASE_GAIN * this.getStrengthValue() * this.multipliers.gain;
+    const modifiers = this.powerUpModifiers ?? {};
+    const multiplier = modifiers.gainMultiplier ?? 1;
+    const flatBonus = modifiers.flatGains ?? 0;
+    return base * multiplier + flatBonus;
   }
 
   getActivityCatalog() {
@@ -543,7 +557,9 @@ export class Stats {
 
   getStaminaCostForActivity(key = this.getSelectedActivity()) {
     const activity = ACTIVITY_CATALOG[key];
-    return activity ? activity.staminaCost : 1;
+    const base = activity ? activity.staminaCost : 1;
+    const multiplier = this.powerUpModifiers?.staminaCostMultiplier ?? 1;
+    return Math.max(0, base * multiplier);
   }
 
   getActivitySnapshots() {
@@ -569,11 +585,13 @@ export class Stats {
   }
 
   getTicksPerSecond() {
-    return 1 + this.getSpeedValue() / 10;
+    const base = 1 + this.getSpeedValue() / 10;
+    return base * (this.powerUpModifiers?.tickRateMultiplier ?? 1);
   }
 
   getRestRatePerSecond() {
-    return this.getRecoveryValue() * 0.5;
+    const base = this.getRecoveryValue() * 0.5;
+    return base * (this.powerUpModifiers?.restRateMultiplier ?? 1);
   }
 
   getMaxStamina() {
@@ -643,6 +661,145 @@ export class Stats {
     }
     upgrade.apply(this);
     return true;
+  }
+
+  getPowerUpModifiers() {
+    return { ...this.powerUpModifiers };
+  }
+
+  getActivePowerUps() {
+    return this.activePowerUps.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      description: entry.description,
+      remaining: entry.remaining,
+      stacks: entry.stacks,
+      effect: { ...entry.effect },
+      presentation: { ...entry.presentation },
+    }));
+  }
+
+  clearPowerUps() {
+    this.activePowerUps = [];
+    this.recalculatePowerUpModifiers();
+  }
+
+  recalculatePowerUpModifiers() {
+    const modifiers = {
+      gainMultiplier: 1,
+      restRateMultiplier: 1,
+      staminaCostMultiplier: 1,
+      tickRateMultiplier: 1,
+      flatGains: 0,
+    };
+    this.activePowerUps = this.activePowerUps.filter((entry) => entry.remaining > 0);
+    for (const entry of this.activePowerUps) {
+      const stacks = Math.max(1, entry.stacks ?? 1);
+      const effect = entry.effect ?? {};
+      if (effect.gainMultiplier != null) {
+        modifiers.gainMultiplier *= Math.pow(effect.gainMultiplier, stacks);
+      }
+      if (effect.restRateMultiplier != null) {
+        modifiers.restRateMultiplier *= Math.pow(effect.restRateMultiplier, stacks);
+      }
+      if (effect.staminaCostMultiplier != null) {
+        modifiers.staminaCostMultiplier *= Math.pow(effect.staminaCostMultiplier, stacks);
+      }
+      if (effect.tickRateMultiplier != null) {
+        modifiers.tickRateMultiplier *= Math.pow(effect.tickRateMultiplier, stacks);
+      }
+      if (effect.flatGains != null) {
+        modifiers.flatGains += effect.flatGains * stacks;
+      }
+    }
+    this.powerUpModifiers = modifiers;
+  }
+
+  activatePowerUp(activation) {
+    if (!activation) {
+      return { applied: false, reason: "invalid" };
+    }
+    const stacking = {
+      mode: "refresh",
+      maxStacks: 1,
+      refreshOnStack: true,
+      ...activation.stacking,
+    };
+    const existingIndex = this.activePowerUps.findIndex((entry) => entry.id === activation.id);
+    let resultType = "new";
+    let entry;
+
+    if (existingIndex >= 0) {
+      entry = this.activePowerUps[existingIndex];
+      if (stacking.mode === "ignore") {
+        return { applied: false, reason: "ignored", activation };
+      }
+      if (stacking.mode === "stack") {
+        const maxStacks = stacking.maxStacks ?? Number.POSITIVE_INFINITY;
+        if ((entry.stacks ?? 1) < maxStacks) {
+          entry.stacks = (entry.stacks ?? 1) + 1;
+          resultType = "stacked";
+        } else {
+          resultType = "refreshed";
+        }
+        if (stacking.refreshOnStack !== false) {
+          entry.remaining = Math.max(entry.remaining ?? 0, activation.durationSeconds ?? 0);
+        }
+      } else {
+        entry.remaining = activation.durationSeconds ?? entry.remaining;
+        resultType = "refreshed";
+      }
+    } else {
+      entry = {
+        id: activation.id,
+        name: activation.name,
+        description: activation.description,
+        remaining: activation.durationSeconds ?? 0,
+        effect: activation.effect ?? {},
+        presentation: activation.presentation ?? {},
+        stacks: 1,
+      };
+      this.activePowerUps.push(entry);
+    }
+
+    this.recalculatePowerUpModifiers();
+
+    return {
+      applied: true,
+      type: resultType,
+      activation,
+      entry: {
+        id: entry.id,
+        name: entry.name,
+        description: entry.description,
+        remaining: entry.remaining,
+        stacks: entry.stacks,
+        effect: { ...entry.effect },
+        presentation: { ...entry.presentation },
+      },
+    };
+  }
+
+  updatePowerUps(deltaSeconds) {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) {
+      return this.getActivePowerUps();
+    }
+    let removed = false;
+    for (const entry of this.activePowerUps) {
+      entry.remaining = Math.max(0, (entry.remaining ?? 0) - deltaSeconds);
+      if (entry.remaining === 0) {
+        removed = true;
+      }
+    }
+    if (removed) {
+      const before = this.activePowerUps.length;
+      this.activePowerUps = this.activePowerUps.filter((entry) => entry.remaining > 0);
+      removed = removed || before !== this.activePowerUps.length;
+    }
+    if (removed) {
+      this.recalculatePowerUpModifiers();
+    }
+    return this.getActivePowerUps();
   }
 
   consumeStamina(amount = 1) {

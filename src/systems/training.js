@@ -1,3 +1,5 @@
+import { PowerUpScheduler, DEFAULT_POWER_UP_EVENTS } from "../gameplay/events/powerups.js";
+
 export const ACTIVITY_CATALOG = {
   forage: {
     name: "Foraging Run",
@@ -73,10 +75,19 @@ function getDefaultActivityKey() {
 }
 
 export class TrainingSystem {
-  constructor(stats, { onTick = () => {}, onRestChange = () => {} } = {}) {
+  constructor(
+    stats,
+    {
+      onTick = () => {},
+      onRestChange = () => {},
+      onPowerUpActivated = () => {},
+      powerUpConfig = {},
+    } = {}
+  ) {
     this.stats = stats;
     this.onTick = onTick;
     this.onRestChange = onRestChange;
+    this.onPowerUpActivated = onPowerUpActivated;
 
     this.resting = false;
     this.tickAccumulator = 0;
@@ -84,6 +95,15 @@ export class TrainingSystem {
     this.passiveAccumulator = 0;
     this.running = false;
     this.lastTimestamp = performance.now();
+
+    const events = powerUpConfig.events ?? DEFAULT_POWER_UP_EVENTS;
+    const schedulerOptions = {
+      baseInterval: powerUpConfig.baseInterval,
+      scoreInterval: powerUpConfig.scoreInterval,
+      cooldownSeconds: powerUpConfig.cooldownSeconds,
+      random: powerUpConfig.random,
+    };
+    this.powerUpScheduler = new PowerUpScheduler(events, schedulerOptions);
   }
 
   start() {
@@ -110,7 +130,15 @@ export class TrainingSystem {
     const deltaSeconds = (timestamp - this.lastTimestamp) / 1000;
     this.lastTimestamp = timestamp;
 
-    this.stats.tickHudState(deltaSeconds);
+    this.stats.updatePowerUps(deltaSeconds);
+    const scheduledEvent = this.powerUpScheduler.update(deltaSeconds, this.stats);
+    if (scheduledEvent) {
+      const activation = scheduledEvent.createActivation();
+      const result = this.stats.activatePowerUp(activation);
+      if (result.applied) {
+        this.onPowerUpActivated(result);
+      }
+    }
 
     const ticksPerSecond = this.stats.getTicksPerSecond();
     this.tickAccumulator += deltaSeconds * ticksPerSecond;
