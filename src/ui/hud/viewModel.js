@@ -11,7 +11,7 @@ function formatSeconds(seconds) {
   if (seconds == null || Number.isNaN(seconds)) {
     return "0s";
   }
-  const clamped = Math.max(0, Math.round(seconds));
+  const clamped = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(clamped / 60);
   const secs = clamped % 60;
   if (minutes > 0) {
