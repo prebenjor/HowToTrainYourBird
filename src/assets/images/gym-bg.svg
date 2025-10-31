@@ -1,0 +1,40 @@
+<svg width="400" height="260" viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Cartoon gym background</title>
+  <desc id="desc">A stylized pastel gym interior with windows and equipment silhouettes.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#cfe3ff" />
+      <stop offset="100%" stop-color="#f2f6ff" />
+    </linearGradient>
+    <linearGradient id="floor" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#c7d2f7" />
+      <stop offset="100%" stop-color="#aab7e8" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="260" fill="#f5f8ff" />
+  <rect x="0" y="0" width="400" height="180" fill="url(#sky)" />
+  <rect x="0" y="180" width="400" height="80" fill="url(#floor)" />
+  <g opacity="0.35">
+    <rect x="32" y="48" width="64" height="92" rx="12" fill="#ffffff" />
+    <rect x="112" y="48" width="64" height="92" rx="12" fill="#ffffff" />
+    <rect x="192" y="48" width="64" height="92" rx="12" fill="#ffffff" />
+    <rect x="272" y="48" width="64" height="92" rx="12" fill="#ffffff" />
+  </g>
+  <g opacity="0.22" fill="#4f6ab8">
+    <path d="M60 180 L80 120 H96 L116 180 Z" />
+    <rect x="132" y="138" width="32" height="42" rx="6" />
+    <path d="M188 180 L204 132 H226 L242 180 Z" />
+    <rect x="258" y="126" width="40" height="54" rx="8" />
+    <path d="M314 180 L334 132 L356 180 Z" />
+  </g>
+  <g opacity="0.4" stroke="#7a8fe0" stroke-width="6" stroke-linecap="round">
+    <path d="M40 206 H360" />
+    <path d="M90 214 H310" />
+  </g>
+  <g opacity="0.25" fill="#7f9bf7">
+    <circle cx="60" cy="214" r="16" />
+    <circle cx="116" cy="214" r="16" />
+    <circle cx="280" cy="214" r="16" />
+    <circle cx="336" cy="214" r="16" />
+  </g>
+</svg>

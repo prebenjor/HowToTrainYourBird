@@ -1,0 +1,43 @@
+<svg width="280" height="240" viewBox="0 0 280 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Intermediate bird athlete</title>
+  <desc id="desc">A mid-sized blue bird with defined wings curling a kettlebell.</desc>
+  <defs>
+    <linearGradient id="bodyBlue" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#7fb4ff" />
+      <stop offset="100%" stop-color="#4f7be0" />
+    </linearGradient>
+    <linearGradient id="wingGlow" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#9ad4ff" />
+      <stop offset="100%" stop-color="#4f7be0" />
+    </linearGradient>
+  </defs>
+  <rect width="280" height="240" rx="48" fill="#eef3ff" />
+  <g transform="translate(44 32)">
+    <ellipse cx="108" cy="178" rx="88" ry="32" fill="#435a94" opacity="0.2" />
+    <path d="M60 140 C30 126 28 94 56 88 L78 134 Z" fill="url(#wingGlow)" />
+    <path d="M156 140 C186 126 188 94 160 88 L138 134 Z" fill="url(#wingGlow)" />
+    <ellipse cx="108" cy="108" rx="76" ry="86" fill="url(#bodyBlue)" />
+    <path d="M96 66 Q108 58 120 66" stroke="#2c2f3a" stroke-width="8" stroke-linecap="round" fill="none" />
+    <circle cx="90" cy="88" r="7" fill="#2c2f3a" />
+    <circle cx="126" cy="88" r="7" fill="#2c2f3a" />
+    <path d="M108 100 L120 120 L96 120 Z" fill="#ffb347" />
+    <path d="M76 144 Q92 158 108 154 Q124 158 140 144" stroke="#193464" stroke-width="8" stroke-linecap="round" fill="none" />
+    <rect x="80" y="50" width="56" height="14" rx="7" fill="#ff7a59" />
+    <g transform="translate(-2 112)">
+      <path d="M12 32 C12 20 22 12 32 12 C42 12 52 20 52 32 C52 42 44 50 32 50 C20 50 12 42 12 32Z" fill="#2c2f3a" />
+      <path d="M32 0 C48 4 52 14 50 30 L42 30 C42 22 40 18 32 16 Z" fill="#2c2f3a" />
+      <rect x="26" y="18" width="12" height="28" rx="5" fill="#ffcf6b" />
+    </g>
+    <g transform="translate(190 112)">
+      <path d="M48 32 C48 20 38 12 28 12 C18 12 8 20 8 32 C8 42 16 50 28 50 C40 50 48 42 48 32Z" fill="#2c2f3a" />
+      <path d="M28 0 C12 4 8 14 10 30 L18 30 C18 22 20 18 28 16 Z" fill="#2c2f3a" />
+      <rect x="20" y="18" width="12" height="28" rx="5" fill="#ffcf6b" />
+    </g>
+    <g transform="translate(108 150)">
+      <rect x="-22" y="-10" width="44" height="20" rx="10" fill="#2c2f3a" />
+      <rect x="-52" y="-4" width="104" height="8" rx="4" fill="#2c2f3a" />
+      <circle cx="-62" cy="0" r="10" fill="#ffcf6b" />
+      <circle cx="62" cy="0" r="10" fill="#ffcf6b" />
+    </g>
+  </g>
+</svg>

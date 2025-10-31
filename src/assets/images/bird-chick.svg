@@ -1,0 +1,29 @@
+<svg width="240" height="240" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Hatchling bird getting pumped</title>
+  <desc id="desc">A small round yellow chick wearing a sweatband and lifting a tiny seed dumbbell.</desc>
+  <defs>
+    <linearGradient id="bodyGradient" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ffe074" />
+      <stop offset="100%" stop-color="#f9c64b" />
+    </linearGradient>
+  </defs>
+  <rect width="240" height="240" rx="48" fill="#f5f8ff" />
+  <g transform="translate(40 40)">
+    <circle cx="80" cy="90" r="70" fill="url(#bodyGradient)" />
+    <ellipse cx="80" cy="155" rx="60" ry="26" fill="#d8b03c" opacity="0.25" />
+    <path d="M55 80 Q80 60 105 80" stroke="#2e2f3a" stroke-width="6" stroke-linecap="round" fill="none" />
+    <circle cx="62" cy="92" r="6" fill="#2e2f3a" />
+    <circle cx="98" cy="92" r="6" fill="#2e2f3a" />
+    <path d="M80 104 L88 118 L72 118 Z" fill="#ff7a59" />
+    <path d="M44 126 Q40 104 56 100" stroke="#f9c64b" stroke-width="14" stroke-linecap="round" fill="none" />
+    <path d="M116 126 Q120 104 104 100" stroke="#f9c64b" stroke-width="14" stroke-linecap="round" fill="none" />
+    <rect x="50" y="62" width="60" height="10" rx="5" fill="#5a8dee" />
+    <path d="M32 132 Q28 122 34 116 L52 120 Q46 140 32 132" fill="#5a8dee" />
+    <path d="M128 132 Q132 122 126 116 L108 120 Q114 140 128 132" fill="#5a8dee" />
+    <g transform="translate(20 140)">
+      <rect x="-8" y="16" width="16" height="40" rx="6" fill="#2e2f3a" />
+      <rect x="-16" y="30" width="32" height="12" rx="6" fill="#2e2f3a" />
+      <circle cx="0" cy="36" r="6" fill="#ffcf6b" />
+    </g>
+  </g>
+</svg>
