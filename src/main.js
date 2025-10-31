@@ -9,6 +9,7 @@ import { GamblePanel } from "./ui/GambleModal.js";
 import { PrestigePanel } from "./ui/PrestigePanel.js";
 import { AchievementsPanel } from "./ui/AchievementsPanel.js";
 import { BirdDisplay } from "./ui/BirdDisplay.js";
+import { Hud } from "./ui/hud/Hud.js";
 
 import { TopNavTabs } from "./ui/components/top_nav.js";
 import { Router } from "./ui/navigation/router.js";
@@ -27,6 +28,7 @@ new TopNavTabs(document.getElementById("top-nav"), router, [
 
 let achievementsPanel;
 let trainingSystem;
+let hud;
 const gambleSystem = new GambleSystem(stats);
 const prestigeSystem = new PrestigeSystem(stats);
 const achievementSystem = new AchievementSystem(stats, (achievement) => {
@@ -63,12 +65,28 @@ achievementsPanel = new AchievementsPanel(
   document.getElementById("achievements-panel"),
   achievementSystem
 );
+hud = new Hud(document.getElementById("hud-root"), stats);
 
 trainingSystem = new TrainingSystem(stats, {
   onTick: () => updateUI(),
   onRestChange: (resting) => {
     progressPanel.setResting(resting);
     birdDisplayPanel.setResting(resting);
+  },
+  onPowerUpActivated: (result) => {
+    if (!result?.applied) {
+      return;
+    }
+    const activation = result.activation ?? {};
+    const icon = activation.presentation?.icon ?? "✨";
+    const verb =
+      result.type === "stacked"
+        ? "stacked"
+        : result.type === "refreshed"
+        ? "refreshed"
+        : "activated";
+    gambleSystem.pushLog(`${icon} ${activation.name ?? "Power-Up"} ${verb}!`);
+    updateUI();
   },
 });
 
@@ -82,6 +100,9 @@ function updateUI() {
   upgradesPanel.update();
   prestigePanel.update();
   achievementsPanel.update();
+  if (hud) {
+    hud.update();
+  }
 }
 
 updateUI();
