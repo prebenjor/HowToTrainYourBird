@@ -1,4 +1,9 @@
 import { ACTIVITY_CATALOG } from "./training.js";
+import {
+  MENTOR_CATALOG,
+  getMentorById,
+  getMentorBonusStats,
+} from "../gameplay/mentors.js";
 
 const HUD_EVENT_ROTATION = [
   {
@@ -86,6 +91,31 @@ const ACTIVITY_MODIFIERS = {
 
 const BASE_GAIN = 1;
 
+const MENTOR_STORAGE_KEY = "howtotrainyourbird:mentors";
+
+const MENTOR_BONUS_STATS = getMentorBonusStats();
+
+function resolveStorage(storage) {
+  if (storage) {
+    try {
+      void storage.length;
+      return storage;
+    } catch (error) {
+      return null;
+    }
+  }
+  if (typeof window !== "undefined" && window?.localStorage) {
+    try {
+      const candidate = window.localStorage;
+      void candidate.length;
+      return candidate;
+    } catch (error) {
+      return null;
+    }
+  }
+  return null;
+}
+
 const STAT_CONFIG = {
   strength: {
     baseCost: 100,
@@ -134,7 +164,8 @@ const EGG_UPGRADES = {
 };
 
 export class Stats {
-  constructor() {
+  constructor(options = {}) {
+    const { storage } = options;
     this.levels = {
       strength: 0,
       stamina: 0,
@@ -197,6 +228,16 @@ export class Stats {
 
     this._eventIndex = 0;
     this._nextEvent = this._createEventState(HUD_EVENT_ROTATION[0] ?? null);
+
+    this.storage = resolveStorage(storage);
+    this.unlockedMentors = new Set();
+    this.mentorMultipliers = {
+      strength: 1,
+      recovery: 1,
+      speed: 1,
+    };
+
+    this._loadMentorState();
   }
 
   static get STAT_CONFIG() {
@@ -205,6 +246,124 @@ export class Stats {
 
   static get EGG_UPGRADES() {
     return EGG_UPGRADES;
+  }
+
+  static get MENTOR_CATALOG() {
+    return MENTOR_CATALOG;
+  }
+
+  _loadMentorState() {
+    this.unlockedMentors.clear();
+    const storage = this.storage;
+    if (!storage) {
+      this.recalculateMentorBonuses();
+      return;
+    }
+    try {
+      const raw = storage.getItem(MENTOR_STORAGE_KEY);
+      if (typeof raw !== "string" || raw.length === 0) {
+        this.recalculateMentorBonuses();
+        return;
+      }
+      const data = JSON.parse(raw);
+      const entries = Array.isArray(data?.mentors) ? data.mentors : [];
+      entries.forEach((id) => {
+        if (getMentorById(id)) {
+          this.unlockedMentors.add(id);
+        }
+      });
+    } catch (error) {
+      // Ignore persistence errors and continue with an empty mentor set.
+    }
+    this.recalculateMentorBonuses();
+  }
+
+  _saveMentorState() {
+    const storage = this.storage;
+    if (!storage) {
+      return;
+    }
+    try {
+      const payload = {
+        mentors: Array.from(this.unlockedMentors.values()),
+      };
+      storage.setItem(MENTOR_STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      // Swallow storage errors to avoid interrupting gameplay.
+    }
+  }
+
+  recalculateMentorBonuses() {
+    const totals = {};
+    MENTOR_BONUS_STATS.forEach((stat) => {
+      totals[stat] = 0;
+    });
+
+    for (const id of this.unlockedMentors) {
+      const mentor = getMentorById(id);
+      if (!mentor) {
+        continue;
+      }
+      const bonuses = mentor.bonuses ?? {};
+      Object.entries(bonuses).forEach(([stat, value]) => {
+        if (!Number.isFinite(value)) {
+          return;
+        }
+        if (totals[stat] == null) {
+          totals[stat] = 0;
+        }
+        totals[stat] += value;
+      });
+    }
+
+    this.mentorMultipliers = {
+      strength: 1 + (totals.strength ?? 0),
+      recovery: 1 + (totals.recovery ?? 0),
+      speed: 1 + (totals.speed ?? 0),
+    };
+  }
+
+  getMentorMultiplier(stat) {
+    const multiplier = this.mentorMultipliers?.[stat];
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
+      return 1;
+    }
+    return multiplier;
+  }
+
+  getMentorSnapshots() {
+    return MENTOR_CATALOG.map((mentor) => {
+      const bonuses = mentor.bonuses ?? {};
+      return {
+        id: mentor.id,
+        name: mentor.name,
+        description: mentor.description,
+        cost: mentor.cost,
+        bonuses: { ...bonuses },
+        unlocked: this.isMentorUnlocked(mentor.id),
+      };
+    });
+  }
+
+  isMentorUnlocked(id) {
+    return this.unlockedMentors.has(id);
+  }
+
+  unlockMentor(id) {
+    const mentor = getMentorById(id);
+    if (!mentor) {
+      return false;
+    }
+    if (this.isMentorUnlocked(id)) {
+      return false;
+    }
+    if (!this.spendEggs(mentor.cost)) {
+      return false;
+    }
+    this.unlockedMentors.add(id);
+    this.recalculateMentorBonuses();
+    this._saveMentorState();
+    return true;
   }
 
   _createEventState(event) {
@@ -443,7 +602,11 @@ export class Stats {
   }
 
   getStrengthValue() {
-    return (1 + this.levels.strength) * this.multipliers.strength;
+    return (
+      (1 + this.levels.strength) *
+      this.multipliers.strength *
+      this.getMentorMultiplier("strength")
+    );
   }
 
   getStaminaCapacity() {
@@ -451,11 +614,19 @@ export class Stats {
   }
 
   getRecoveryValue() {
-    return (1 + this.levels.recovery * 0.02) * this.multipliers.recovery;
+    return (
+      (1 + this.levels.recovery * 0.02) *
+      this.multipliers.recovery *
+      this.getMentorMultiplier("recovery")
+    );
   }
 
   getSpeedValue() {
-    return (1 + this.levels.speed * 0.5) * this.multipliers.speed;
+    return (
+      (1 + this.levels.speed * 0.5) *
+      this.multipliers.speed *
+      this.getMentorMultiplier("speed")
+    );
   }
 
   getGainsPerTick() {
