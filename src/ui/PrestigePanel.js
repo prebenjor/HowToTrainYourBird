@@ -36,11 +36,15 @@ export class PrestigePanel {
         <button data-action="prestige">Lay Egg &amp; Rebirth</button>
         <h3>Egg Upgrades</h3>
         <div class="egg-upgrades">${eggUpgradeList}</div>
+        <h3>Mentor Network</h3>
+        <div class="mentor-list" data-mentor-list></div>
       </div>
     `;
 
     this.eggsNode = this.root.querySelector('[data-prestige="eggs"]');
     this.prestigeButton = this.root.querySelector('button[data-action="prestige"]');
+    this.mentorList = this.root.querySelector('[data-mentor-list]');
+    this.mentorRows = new Map();
 
     this.prestigeButton.addEventListener("click", () => {
       if (!this.prestigeSystem.canPrestige()) {
@@ -61,6 +65,7 @@ export class PrestigePanel {
       });
     });
 
+    this.renderMentors();
     this.update();
   }
 
@@ -75,5 +80,92 @@ export class PrestigePanel {
       const cost = Stats.EGG_UPGRADES[key].cost;
       button.disabled = this.stats.eggs < cost;
     });
+
+    this.updateMentors();
   }
+
+  renderMentors() {
+    if (!this.mentorList) {
+      return;
+    }
+    this.mentorList.innerHTML = "";
+    this.mentorRows.clear();
+    const fragment = document.createDocumentFragment();
+    const mentors = this.stats.getMentorSnapshots();
+    mentors.forEach((mentor) => {
+      const row = document.createElement("div");
+      row.className = "mentor-node";
+      row.dataset.mentor = mentor.id;
+      row.innerHTML = `
+        <div class="mentor-info">
+          <div class="mentor-title">${mentor.name}</div>
+          <div class="mentor-description" data-field="description"></div>
+          <div class="mentor-bonus" data-field="bonus"></div>
+          <div class="mentor-cost" data-field="cost"></div>
+        </div>
+        <button data-action="mentor-unlock" data-mentor="${mentor.id}">Recruit</button>
+      `;
+      const button = row.querySelector('button[data-action="mentor-unlock"]');
+      button.addEventListener("click", () => {
+        if (this.stats.unlockMentor(mentor.id)) {
+          this.onUpgrade();
+          this.update();
+        }
+      });
+      this.mentorRows.set(mentor.id, {
+        row,
+        description: row.querySelector('[data-field="description"]'),
+        bonus: row.querySelector('[data-field="bonus"]'),
+        cost: row.querySelector('[data-field="cost"]'),
+        button,
+      });
+      fragment.appendChild(row);
+    });
+    this.mentorList.appendChild(fragment);
+    this.updateMentors();
+  }
+
+  updateMentors() {
+    if (!this.mentorList) {
+      return;
+    }
+    const mentors = this.stats.getMentorSnapshots();
+    mentors.forEach((mentor) => {
+      const refs = this.mentorRows.get(mentor.id);
+      if (!refs) {
+        return;
+      }
+      refs.description.textContent = mentor.description || "";
+      refs.bonus.textContent = formatMentorBonuses(mentor.bonuses);
+      refs.cost.textContent = `Cost: ${mentor.cost} egg(s)`;
+      refs.row.classList.toggle("is-unlocked", mentor.unlocked);
+      refs.button.textContent = mentor.unlocked ? "Unlocked" : "Recruit";
+      refs.button.disabled = mentor.unlocked || this.stats.eggs < mentor.cost;
+    });
+  }
+}
+
+function formatMentorBonuses(bonuses) {
+  const entries = Object.entries(bonuses ?? {});
+  if (entries.length === 0) {
+    return "No passive bonus";
+  }
+  return entries
+    .map(([stat, value]) => `+${formatPercent(value)} ${capitalize(stat)}`)
+    .join(" · ");
+}
+
+function formatPercent(value) {
+  if (!Number.isFinite(value)) {
+    return "0%";
+  }
+  const percent = value * 100;
+  return percent % 1 === 0 ? percent.toFixed(0) + "%" : percent.toFixed(1) + "%";
+}
+
+function capitalize(word) {
+  if (!word) {
+    return "";
+  }
+  return word.charAt(0).toUpperCase() + word.slice(1);
 }
