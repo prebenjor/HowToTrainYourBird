@@ -151,12 +151,29 @@ export class AchievementsPanel {
         data.row.classList.add("unlocked");
       } else if (progress) {
         const { current, target, unit, precision } = progress;
-        let currentFormatted = typeof current === "number" ? formatNumber(current) : current;
-        let targetFormatted = typeof target === "number" ? formatNumber(target) : target;
-        if (precision !== undefined && typeof current === "number") {
-          currentFormatted = Number(current).toFixed(precision);
+
+        let currentFormatted;
+        if (typeof current === "number") {
+          currentFormatted =
+            precision !== undefined ? Number(current).toFixed(precision) : formatNumber(current);
+        } else if (current != null) {
+          currentFormatted = String(current);
+        } else {
+          currentFormatted = "?";
         }
-        data.statusNode.textContent = `Progress: ${currentFormatted}/${targetFormatted} ${unit}`;
+
+        let targetFormatted;
+        if (typeof target === "number") {
+          targetFormatted = formatNumber(target);
+        } else if (target != null) {
+          targetFormatted = String(target);
+        } else {
+          targetFormatted = "?";
+        }
+
+        const unitSuffix = unit ? ` ${unit}` : "";
+
+        data.statusNode.textContent = `Progress: ${currentFormatted}/${targetFormatted}${unitSuffix}`;
         data.row.classList.remove("unlocked");
       } else {
         data.statusNode.textContent = "In progress";
