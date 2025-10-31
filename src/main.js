@@ -56,6 +56,21 @@ trainingSystem = new TrainingSystem(stats, {
     progressPanel.setResting(resting);
     birdDisplayPanel.setResting(resting);
   },
+  onPowerUpActivated: (result) => {
+    if (!result?.applied) {
+      return;
+    }
+    const activation = result.activation ?? {};
+    const icon = activation.presentation?.icon ?? "✨";
+    const verb =
+      result.type === "stacked"
+        ? "stacked"
+        : result.type === "refreshed"
+        ? "refreshed"
+        : "activated";
+    gambleSystem.pushLog(`${icon} ${activation.name ?? "Power-Up"} ${verb}!`);
+    updateUI();
+  },
 });
 
 trainingSystem.start();
