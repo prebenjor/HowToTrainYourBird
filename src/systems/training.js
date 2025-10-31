@@ -110,6 +110,8 @@ export class TrainingSystem {
     const deltaSeconds = (timestamp - this.lastTimestamp) / 1000;
     this.lastTimestamp = timestamp;
 
+    this.stats.tickHudState(deltaSeconds);
+
     const ticksPerSecond = this.stats.getTicksPerSecond();
     this.tickAccumulator += deltaSeconds * ticksPerSecond;
 
@@ -131,6 +133,10 @@ export class TrainingSystem {
         if (this.stats.consumeStamina(staminaCost)) {
           const tickResult = this.stats.getActivityPayout(activityKey);
           this.stats.recordTrainingAction({ activityKey, count: 1 });
+          this.stats.handleTrainingTick({
+            activityKey,
+            multiplier: tickResult.multiplier,
+          });
           if (tickResult.gains > 0) {
             this.stats.addGains(tickResult.gains);
           }
@@ -144,6 +150,7 @@ export class TrainingSystem {
         } else {
           this.resting = true;
           this.onRestChange(true);
+          this.stats.breakCombo("rest");
           this.tickAccumulator = 0;
           break;
         }

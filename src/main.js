@@ -9,10 +9,12 @@ import { GamblePanel } from "./ui/GambleModal.js";
 import { PrestigePanel } from "./ui/PrestigePanel.js";
 import { AchievementsPanel } from "./ui/AchievementsPanel.js";
 import { BirdDisplay } from "./ui/BirdDisplay.js";
+import { Hud } from "./ui/hud/Hud.js";
 
 const stats = new Stats();
 let achievementsPanel;
 let trainingSystem;
+let hud;
 const gambleSystem = new GambleSystem(stats);
 const prestigeSystem = new PrestigeSystem(stats);
 const achievementSystem = new AchievementSystem(stats, (achievement) => {
@@ -49,6 +51,7 @@ achievementsPanel = new AchievementsPanel(
   document.getElementById("achievements-panel"),
   achievementSystem
 );
+hud = new Hud(document.getElementById("hud-root"), stats);
 
 trainingSystem = new TrainingSystem(stats, {
   onTick: () => updateUI(),
@@ -68,6 +71,9 @@ function updateUI() {
   upgradesPanel.update();
   prestigePanel.update();
   achievementsPanel.update();
+  if (hud) {
+    hud.update();
+  }
 }
 
 updateUI();
