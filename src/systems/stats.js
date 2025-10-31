@@ -189,7 +189,7 @@ export class Stats {
       streak: 0,
       best: 0,
       multiplier: 1,
-      decayWindow: 6,
+      decayWindow: 8,
       timeRemaining: 0,
       lastActivity: null,
       lastBreakReason: null,
@@ -228,12 +228,12 @@ export class Stats {
     }
   }
 
-  tickHudState(deltaSeconds) {
+  tickHudState(deltaSeconds, { resting = false } = {}) {
     if (deltaSeconds <= 0) {
       return;
     }
     this._tickModifiers(deltaSeconds);
-    this._tickCombo(deltaSeconds);
+    this._tickCombo(deltaSeconds, { resting });
     this._tickEventTimer(deltaSeconds);
   }
 
@@ -251,17 +251,28 @@ export class Stats {
     expired.forEach((id) => this._modifierState.delete(id));
   }
 
-  _tickCombo(deltaSeconds) {
+  _tickCombo(deltaSeconds, { resting = false } = {}) {
     if (this._comboState.streak <= 0) {
+      return;
+    }
+    const decayMultiplier = resting ? this.getComboRestDecayMultiplier() : 1;
+    const adjustedDelta = deltaSeconds * decayMultiplier;
+    if (adjustedDelta <= 0) {
       return;
     }
     this._comboState.timeRemaining = Math.max(
       0,
-      this._comboState.timeRemaining - deltaSeconds
+      this._comboState.timeRemaining - adjustedDelta
     );
     if (this._comboState.timeRemaining <= 0) {
       this.resetCombo("decay");
     }
+  }
+
+  getComboRestDecayMultiplier() {
+    const baseSlowdown = 0.35;
+    const eggReduction = Math.min(0.2, this.totalEggsLaid * 0.025);
+    return Math.max(0.12, baseSlowdown - eggReduction);
   }
 
   _tickEventTimer(deltaSeconds) {
@@ -371,12 +382,31 @@ export class Stats {
     }
     const bonus = Math.max(0, this._comboState.streak - 1);
     const ramp = 1 + bonus * 0.025;
-    this._comboState.multiplier = Number(Math.min(ramp, 5).toFixed(2));
+    const cappedRamp = Math.min(ramp, 5);
+    this._comboState.multiplier =
+      Math.round((cappedRamp + Number.EPSILON) * 100) / 100;
     this._comboState.best = Math.max(this._comboState.best, this._comboState.streak);
     this._comboState.timeRemaining = this._comboState.decayWindow;
     this._comboState.lastBreakReason = null;
 
     this.maybeTriggerTrainingModifier(activityKey);
+  }
+
+  getComboScalingFactor() {
+    const eggProgress = Math.min(1, this.totalEggsLaid / 10);
+    return 0.25 + eggProgress * 0.75;
+  }
+
+  getEffectiveComboMultiplier() {
+    if (this._comboState.streak <= 0) {
+      return 1;
+    }
+    const baseMultiplier = this._comboState.multiplier ?? 1;
+    const extra = Math.max(0, baseMultiplier - 1);
+    const scaling = this.getComboScalingFactor();
+    const effective = 1 + extra * scaling;
+    const cappedEffective = Math.min(5, effective);
+    return Math.round((cappedEffective + Number.EPSILON) * 100) / 100;
   }
 
   breakCombo(reason = "manual") {
@@ -399,13 +429,17 @@ export class Stats {
   }
 
   getComboSnapshot() {
+    const effectiveMultiplier = this.getEffectiveComboMultiplier();
     return {
       streak: this._comboState.streak,
       best: this._comboState.best,
-      multiplier: this._comboState.multiplier,
+      multiplier: effectiveMultiplier,
+      rawMultiplier: this._comboState.multiplier,
       timeRemaining: this._comboState.timeRemaining,
       decayWindow: this._comboState.decayWindow,
       lastBreakReason: this._comboState.lastBreakReason,
+      scalingFactor: this.getComboScalingFactor(),
+      restDecayMultiplier: this.getComboRestDecayMultiplier(),
     };
   }
 
@@ -545,13 +579,20 @@ export class Stats {
   }
 
   getActivityGainsPerTick(key = this.getSelectedActivity()) {
-    return this.getGainsPerTick() * this.getActivityPayoutMultiplier(key);
+    const comboMultiplier = this.getEffectiveComboMultiplier();
+    return this.getGainsPerTick() * this.getActivityPayoutMultiplier(key) * comboMultiplier;
   }
 
   getActivityPayout(key = this.getSelectedActivity()) {
+    const baseMultiplier = this.getActivityPayoutMultiplier(key);
+    const comboMultiplier = this.getEffectiveComboMultiplier();
+    const totalMultiplier =
+      Math.round((baseMultiplier * comboMultiplier + Number.EPSILON) * 100) / 100;
     return {
       gains: this.getActivityGainsPerTick(key),
-      multiplier: this.getActivityPayoutMultiplier(key),
+      multiplier: totalMultiplier,
+      baseMultiplier,
+      comboMultiplier,
     };
   }
 

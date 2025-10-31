@@ -1,5 +1,7 @@
 import { PowerUpScheduler, DEFAULT_POWER_UP_EVENTS } from "../gameplay/events/powerups.js";
 
+const HUD_UPDATE_INTERVAL_SECONDS = 0.25;
+
 export const ACTIVITY_CATALOG = {
   forage: {
     name: "Foraging Run",
@@ -93,6 +95,7 @@ export class TrainingSystem {
     this.tickAccumulator = 0;
     this.restAccumulator = 0;
     this.passiveAccumulator = 0;
+    this.hudUpdateAccumulator = 0;
     this.running = false;
     this.lastTimestamp = performance.now();
 
@@ -130,6 +133,13 @@ export class TrainingSystem {
     const deltaSeconds = (timestamp - this.lastTimestamp) / 1000;
     this.lastTimestamp = timestamp;
 
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) {
+      return;
+    }
+
+    this.stats.tickHudState(deltaSeconds, { resting: this.resting });
+    this.hudUpdateAccumulator += deltaSeconds;
+
     this.stats.updatePowerUps(deltaSeconds);
     const scheduledEvent = this.powerUpScheduler.update(deltaSeconds, this.stats);
     if (scheduledEvent) {
@@ -156,6 +166,8 @@ export class TrainingSystem {
 
     const staminaCost = this.stats.getStaminaCostForActivity(activityKey);
 
+    let performedTick = false;
+
     if (!this.resting) {
       while (this.tickAccumulator >= 1) {
         if (this.stats.consumeStamina(staminaCost)) {
@@ -174,11 +186,11 @@ export class TrainingSystem {
             stamina: this.stats.stamina,
             activity: activityKey,
           });
+          performedTick = true;
           this.tickAccumulator -= 1;
         } else {
           this.resting = true;
           this.onRestChange(true);
-          this.stats.breakCombo("rest");
           this.tickAccumulator = 0;
           break;
         }
@@ -207,6 +219,13 @@ export class TrainingSystem {
 
     if (!this.resting && this.stats.stamina >= this.stats.getMaxStamina()) {
       this.stats.stamina = this.stats.getMaxStamina();
+    }
+
+    if (performedTick) {
+      this.hudUpdateAccumulator = 0;
+    } else if (this.hudUpdateAccumulator >= HUD_UPDATE_INTERVAL_SECONDS) {
+      this.onTick({ passive: true });
+      this.hudUpdateAccumulator = 0;
     }
   }
 }

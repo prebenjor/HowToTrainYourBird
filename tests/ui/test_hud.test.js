@@ -34,6 +34,40 @@ test("combo meter increments with training ticks", () => {
   assert.ok(snapshot.combo.multiplier > 1);
 });
 
+test("combo decay slows while resting", () => {
+  const stats = new Stats();
+  const activity = stats.getSelectedActivity();
+
+  stats.handleTrainingTick({ activityKey: activity, multiplier: 1 });
+  const initialSnapshot = createHudSnapshot(stats);
+  assert.equal(initialSnapshot.combo.timeRemaining, initialSnapshot.combo.decayWindow);
+
+  stats.tickHudState(10, { resting: true });
+  const restedSnapshot = createHudSnapshot(stats);
+
+  assert.ok(restedSnapshot.combo.streak > 0);
+  assert.ok(restedSnapshot.combo.timeRemaining > 0);
+  assert.ok(restedSnapshot.combo.timeRemaining < initialSnapshot.combo.timeRemaining);
+});
+
+test("combo multiplier gains strength with prestige progress", () => {
+  const stats = new Stats();
+  const activity = stats.getSelectedActivity();
+
+  for (let i = 0; i < 6; i += 1) {
+    stats.handleTrainingTick({ activityKey: activity, multiplier: 1 });
+  }
+
+  const baseSnapshot = createHudSnapshot(stats);
+  const baseMultiplier = baseSnapshot.combo.multiplier;
+
+  stats.totalEggsLaid = 10;
+  const prestigeSnapshot = createHudSnapshot(stats);
+
+  assert.ok(prestigeSnapshot.combo.multiplier > baseMultiplier);
+  assert.ok(prestigeSnapshot.combo.rawMultiplier >= baseSnapshot.combo.rawMultiplier);
+});
+
 test("modifiers surface in hud snapshot and expire", () => {
   const stats = new Stats();
   stats.grantModifier("test-mod", {

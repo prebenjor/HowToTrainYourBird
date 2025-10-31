@@ -3,15 +3,18 @@ const DEFAULT_COMBO = {
   best: 0,
   multiplier: 1,
   timeRemaining: 0,
-  decayWindow: 6,
+  decayWindow: 8,
   lastBreakReason: null,
+  rawMultiplier: 1,
+  scalingFactor: 0.25,
+  restDecayMultiplier: 0.35,
 };
 
 function formatSeconds(seconds) {
   if (seconds == null || Number.isNaN(seconds)) {
     return "0s";
   }
-  const clamped = Math.max(0, Math.round(seconds));
+  const clamped = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(clamped / 60);
   const secs = clamped % 60;
   if (minutes > 0) {
