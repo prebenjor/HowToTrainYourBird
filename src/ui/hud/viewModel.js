@@ -3,8 +3,11 @@ const DEFAULT_COMBO = {
   best: 0,
   multiplier: 1,
   timeRemaining: 0,
-  decayWindow: 6,
+  decayWindow: 8,
   lastBreakReason: null,
+  rawMultiplier: 1,
+  scalingFactor: 0.25,
+  restDecayMultiplier: 0.35,
 };
 
 function formatSeconds(seconds) {

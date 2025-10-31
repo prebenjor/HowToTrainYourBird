@@ -137,7 +137,7 @@ export class TrainingSystem {
       return;
     }
 
-    this.stats.tickHudState(deltaSeconds);
+    this.stats.tickHudState(deltaSeconds, { resting: this.resting });
     this.hudUpdateAccumulator += deltaSeconds;
 
     this.stats.updatePowerUps(deltaSeconds);
@@ -191,7 +191,6 @@ export class TrainingSystem {
         } else {
           this.resting = true;
           this.onRestChange(true);
-          this.stats.breakCombo("rest");
           this.tickAccumulator = 0;
           break;
         }
