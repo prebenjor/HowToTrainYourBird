@@ -290,9 +290,91 @@
       }
 
       main {
+        width: 100%;
+        display: grid;
+        gap: 24px;
+        justify-items: center;
+      }
+
+      .top-nav-container {
+        width: min(1100px, 100%);
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 8px;
+        box-shadow: 0 12px 30px rgba(46, 74, 129, 0.08);
+      }
+
+      #top-nav {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+        overflow-x: auto;
+        padding: 4px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      #top-nav::-webkit-scrollbar {
+        display: none;
+      }
+
+      #top-nav .top-nav__tab {
+        flex: 1 1 0;
+        min-width: 120px;
+        background: transparent;
+        color: var(--muted);
+        padding: 10px 16px;
+        border-radius: 12px;
+        border: none;
+        box-shadow: none;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+        transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        transform: none;
+      }
+
+      #top-nav .top-nav__tab.is-active {
+        background: var(--accent);
+        color: #ffffff;
+        box-shadow: 0 10px 24px rgba(90, 141, 238, 0.25);
+      }
+
+      #top-nav .top-nav__tab:not(.is-active):hover {
+        background: rgba(90, 141, 238, 0.08);
+        color: var(--text);
+        box-shadow: none;
+        transform: none;
+      }
+
+      #top-nav .top-nav__tab:focus-visible {
+        outline: 3px solid rgba(90, 141, 238, 0.45);
+        outline-offset: 2px;
+      }
+
+      #top-nav .top-nav__tab:hover {
+        transform: none;
+        box-shadow: none;
+      }
+
+      .screen {
         width: min(1100px, 100%);
         display: grid;
         gap: 18px;
+      }
+
+      .screen[hidden] {
+        display: none;
+      }
+
+      @media (min-width: 720px) {
+        #top-nav {
+          justify-content: space-between;
+        }
+
+        #top-nav .top-nav__tab {
+          flex: 1 1 120px;
+        }
       }
 
       .panels {
@@ -664,20 +746,45 @@
     </header>
     <div id="hud-root" class="hud-root"></div>
     <main>
-      <section class="panel bird-panel" id="bird-display"></section>
-      <section class="panels">
-        <article class="panel" id="stats-panel"></article>
-        <article class="panel" id="progress-panel"></article>
+      <section
+        class="screen"
+        data-screen-id="dashboard"
+        id="screen-dashboard"
+        role="tabpanel"
+        aria-labelledby="tab-dashboard"
+      >
+        <section class="panel bird-panel" id="bird-display"></section>
+        <section class="panels">
+          <article class="panel" id="stats-panel"></article>
+          <article class="panel" id="progress-panel"></article>
+        </section>
       </section>
 
-      <section class="layout-split">
-        <article class="panel" id="upgrades-panel"></article>
-        <article class="panel" id="gamble-panel"></article>
+      <section
+        class="screen"
+        data-screen-id="development"
+        id="screen-development"
+        role="tabpanel"
+        aria-labelledby="tab-development"
+        hidden
+      >
+        <section class="layout-split">
+          <article class="panel" id="upgrades-panel"></article>
+          <article class="panel" id="gamble-panel"></article>
+        </section>
       </section>
 
-      <section class="panel" id="achievements-panel"></section>
-
-      <section class="panel" id="prestige-panel"></section>
+      <section
+        class="screen"
+        data-screen-id="legacy"
+        id="screen-legacy"
+        role="tabpanel"
+        aria-labelledby="tab-legacy"
+        hidden
+      >
+        <article class="panel" id="achievements-panel"></article>
+        <article class="panel" id="prestige-panel"></article>
+      </section>
     </main>
     <footer>v0.1.0 &mdash; Prototype idle gains.</footer>
     <script type="module" src="./main.js"></script>

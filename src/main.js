@@ -11,7 +11,21 @@ import { AchievementsPanel } from "./ui/AchievementsPanel.js";
 import { BirdDisplay } from "./ui/BirdDisplay.js";
 import { Hud } from "./ui/hud/Hud.js";
 
+import { TopNavTabs } from "./ui/components/top_nav.js";
+import { Router } from "./ui/navigation/router.js";
+
 const stats = new Stats();
+const router = new Router({
+  routes: ["dashboard", "development", "legacy"],
+  defaultRoute: "dashboard",
+});
+
+new TopNavTabs(document.getElementById("top-nav"), router, [
+  { id: "dashboard", label: "Overview", panelId: "screen-dashboard" },
+  { id: "development", label: "Training & Gamble", panelId: "screen-development" },
+  { id: "legacy", label: "Legacy Progress", panelId: "screen-legacy" },
+]);
+
 let achievementsPanel;
 let trainingSystem;
 let hud;
