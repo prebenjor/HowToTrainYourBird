@@ -350,6 +350,57 @@
         gap: 12px;
       }
 
+      .tabs {
+        display: grid;
+        gap: 12px;
+      }
+
+      .tabs-nav {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .tab {
+        border: none;
+        border-radius: 999px;
+        padding: 6px 16px;
+        background: rgba(90, 141, 238, 0.16);
+        color: var(--accent);
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+      }
+
+      .tab:hover {
+        transform: translateY(-1px);
+      }
+
+      .tab.is-active {
+        background: var(--accent);
+        color: white;
+      }
+
+      .tabs-panels {
+        position: relative;
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.is-active {
+        display: block;
+      }
+
+      .empty-state {
+        padding: 16px;
+        border-radius: 12px;
+        background: rgba(95, 100, 128, 0.12);
+        color: var(--muted);
+        text-align: center;
+      }
+
       .achievement-row {
         border-radius: 14px;
         background: rgba(90, 141, 238, 0.08);

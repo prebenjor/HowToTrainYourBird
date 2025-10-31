@@ -4,6 +4,7 @@ const ACHIEVEMENTS = [
     name: "First Flex",
     description: "Reach 1,000 Gains.",
     reward: "+5% Strength",
+    category: "progression",
     check: (stats) => stats.totalGains >= 1_000,
     applyReward: (stats) => {
       stats.multiplyStatMultiplier("strength", 1.05);
@@ -19,6 +20,7 @@ const ACHIEVEMENTS = [
     name: "No Rest Days",
     description: "Train 10,000 times.",
     reward: "+5% Stamina",
+    category: "progression",
     check: (stats) => stats.trainingActions >= 10_000,
     applyReward: (stats) => {
       stats.multiplyStatMultiplier("stamina", 1.05);
@@ -34,6 +36,7 @@ const ACHIEVEMENTS = [
     name: "Eggcelent",
     description: "Lay your first egg.",
     reward: "Unlocks the Eggshell Mohawk cosmetic",
+    category: "prestige",
     check: (stats) => stats.totalEggsLaid > 0,
     applyReward: (stats) => {
       stats.unlockCosmetic("Eggshell Mohawk");
@@ -49,6 +52,7 @@ const ACHIEVEMENTS = [
     name: "Fast Feathers",
     description: "Reach Speed 10.",
     reward: "+10% Gains",
+    category: "progression",
     check: (stats) => stats.getSpeedValue() >= 10,
     applyReward: (stats) => {
       stats.multipliers.gain *= 1.1;
@@ -65,6 +69,7 @@ const ACHIEVEMENTS = [
     name: "Iron Beak",
     description: "Win a x100 gamble.",
     reward: "Unlocks the Iron Beak Trophy cosmetic",
+    category: "gambling",
     check: (_, flags) => flags.hundredWin,
     applyReward: (stats) => {
       stats.unlockCosmetic("Iron Beak Trophy");
@@ -114,6 +119,16 @@ export class AchievementSystem {
 
   getAchievements() {
     return this.achievements;
+  }
+
+  getAchievementCategories() {
+    const categories = new Map();
+    for (const achievement of this.achievements) {
+      const bucket = categories.get(achievement.category) ?? [];
+      bucket.push(achievement);
+      categories.set(achievement.category, bucket);
+    }
+    return categories;
   }
 
   getFlags() {
