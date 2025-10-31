@@ -1,3 +1,44 @@
+export const ACTIVITY_CATALOG = {
+  forage: {
+    name: "Foraging Run",
+    description: "Baseline pecking for seeds to build fundamentals.",
+    staminaCost: 1,
+    tickPayout: 1,
+    masteryThreshold: 100,
+    masteryScale: 1.6,
+    masteryBonus: 0.1,
+    unlock: () => true,
+    unlockDescription: "Available from the start.",
+  },
+  sprint: {
+    name: "Wind Sprints",
+    description: "High-intensity bursts that trade stamina for more gains.",
+    staminaCost: 2,
+    tickPayout: 1.5,
+    masteryThreshold: 150,
+    masteryScale: 1.55,
+    masteryBonus: 0.12,
+    unlock: (stats) => stats.levels.speed >= 5,
+    unlockDescription: "Requires Speed level 5.",
+  },
+  weightlifting: {
+    name: "Weight Training",
+    description: "Slow, deliberate presses to maximize strength output.",
+    staminaCost: 3,
+    tickPayout: 2,
+    masteryThreshold: 200,
+    masteryScale: 1.5,
+    masteryBonus: 0.15,
+    unlock: (stats) => stats.levels.strength >= 10,
+    unlockDescription: "Requires Strength level 10.",
+  },
+};
+
+function getDefaultActivityKey() {
+  const keys = Object.keys(ACTIVITY_CATALOG);
+  return keys.length > 0 ? keys[0] : null;
+}
+
 export class TrainingSystem {
   constructor(stats, { onTick = () => {}, onRestChange = () => {} } = {}) {
     this.stats = stats;
@@ -42,13 +83,30 @@ export class TrainingSystem {
     const passiveRate = this.stats.getPassiveStaminaRegen();
     this.passiveAccumulator += deltaSeconds * passiveRate;
 
+    let activityKey = this.stats.getSelectedActivity();
+    if (!activityKey || !ACTIVITY_CATALOG[activityKey]) {
+      activityKey = getDefaultActivityKey();
+      if (activityKey) {
+        this.stats.setSelectedActivity(activityKey);
+      }
+    }
+
+    const staminaCost = this.stats.getStaminaCostForActivity(activityKey);
+
     if (!this.resting) {
       while (this.tickAccumulator >= 1) {
-        if (this.stats.consumeStamina(1)) {
-          this.stats.recordTrainingAction();
-          const gains = this.stats.getGainsPerTick();
-          this.stats.addGains(gains);
-          this.onTick({ gains, stamina: this.stats.stamina });
+        if (this.stats.consumeStamina(staminaCost)) {
+          const tickResult = this.stats.getActivityPayout(activityKey);
+          this.stats.recordTrainingAction({ activityKey, count: 1 });
+          if (tickResult.gains > 0) {
+            this.stats.addGains(tickResult.gains);
+          }
+          this.onTick({
+            gains: tickResult.gains,
+            multiplier: tickResult.multiplier,
+            stamina: this.stats.stamina,
+            activity: activityKey,
+          });
           this.tickAccumulator -= 1;
         } else {
           this.resting = true;
