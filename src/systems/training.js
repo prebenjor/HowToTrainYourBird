@@ -161,6 +161,10 @@ export class TrainingSystem {
         if (this.stats.consumeStamina(staminaCost)) {
           const tickResult = this.stats.getActivityPayout(activityKey);
           this.stats.recordTrainingAction({ activityKey, count: 1 });
+          this.stats.handleTrainingTick({
+            activityKey,
+            multiplier: tickResult.multiplier,
+          });
           if (tickResult.gains > 0) {
             this.stats.addGains(tickResult.gains);
           }
@@ -174,6 +178,7 @@ export class TrainingSystem {
         } else {
           this.resting = true;
           this.onRestChange(true);
+          this.stats.breakCombo("rest");
           this.tickAccumulator = 0;
           break;
         }

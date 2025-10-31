@@ -37,6 +37,243 @@
         gap: 24px;
       }
 
+      .hud-root {
+        width: min(1100px, 100%);
+      }
+
+      .hud-bar {
+        display: grid;
+        gap: 18px;
+        background: linear-gradient(135deg, rgba(90, 141, 238, 0.2), rgba(255, 122, 89, 0.15));
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 12px 26px rgba(46, 74, 129, 0.1);
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.2fr);
+      }
+
+      .hud-section {
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: inset 0 0 0 1px rgba(90, 141, 238, 0.1);
+      }
+
+      .hud-section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .hud-section--modifiers {
+        overflow: hidden;
+      }
+
+      .hud-modifier-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .hud-modifier-empty {
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+
+      .hud-modifier-empty.is-hidden {
+        display: none;
+      }
+
+      .hud-modifier {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: center;
+        background: rgba(90, 141, 238, 0.08);
+        padding: 10px 12px;
+        border-radius: 14px;
+      }
+
+      .hud-modifier-icon {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.9);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 10px 18px rgba(46, 74, 129, 0.15);
+      }
+
+      .hud-modifier-icon img {
+        width: 32px;
+        height: 32px;
+      }
+
+      .hud-modifier-stack {
+        position: absolute;
+        bottom: -6px;
+        right: -6px;
+        background: var(--accent-strong);
+        color: white;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        box-shadow: 0 6px 16px rgba(255, 122, 89, 0.3);
+      }
+
+      .hud-modifier-stack.is-cap {
+        background: #3ab98f;
+      }
+
+      .hud-modifier-body {
+        display: grid;
+        gap: 6px;
+      }
+
+      .hud-modifier-name {
+        font-weight: 700;
+      }
+
+      .hud-modifier-desc {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .hud-modifier-timer {
+        font-size: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .hud-modifier-timer-label {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .hud-modifier-progress {
+        width: 100%;
+        height: 6px;
+        background: rgba(90, 141, 238, 0.15);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .hud-modifier-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+        width: 100%;
+        transform-origin: left center;
+        transition: width 0.3s ease;
+      }
+
+      .hud-combo {
+        display: grid;
+        gap: 12px;
+        align-content: start;
+      }
+
+      .hud-combo-value {
+        font-size: 2.4rem;
+        font-weight: 700;
+        color: var(--accent-strong);
+      }
+
+      .hud-combo-meter {
+        width: 100%;
+        height: 10px;
+        background: rgba(90, 141, 238, 0.12);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .hud-combo-meter-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), #31b7b0);
+        width: 0%;
+        transition: width 0.25s ease;
+      }
+
+      .hud-combo-footer {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .hud-combo.is-active .hud-combo-value {
+        color: #31b7b0;
+      }
+
+      .hud-combo-best {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .hud-event {
+        display: grid;
+        gap: 12px;
+      }
+
+      .hud-event-header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .hud-event-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgba(90, 141, 238, 0.12);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .hud-event-icon img {
+        width: 36px;
+        height: 36px;
+      }
+
+      .hud-event-name {
+        font-weight: 700;
+        font-size: 1.1rem;
+      }
+
+      .hud-event-timer {
+        font-size: 0.95rem;
+        color: var(--accent);
+      }
+
+      .hud-event-progress {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(90, 141, 238, 0.15);
+        overflow: hidden;
+      }
+
+      .hud-event-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #31b7b0, var(--accent-strong));
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .hud-event-reward {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      @media (max-width: 900px) {
+        .hud-bar {
+          grid-template-columns: 1fr;
+        }
+      }
+
       header {
         text-align: center;
       }
@@ -425,6 +662,7 @@
       <h1>How to Train Your Bird</h1>
       <p class="subtitle">Become the most shredded birb in gym history.</p>
     </header>
+    <div id="hud-root" class="hud-root"></div>
     <main>
       <section class="panel bird-panel" id="bird-display"></section>
       <section class="panels">
