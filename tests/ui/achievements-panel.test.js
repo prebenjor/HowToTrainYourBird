@@ -218,3 +218,32 @@ test(
     assert.equal(secondPanel.tabs.getActiveTab(), "progression", "persisted tab restored on rebuild");
   })
 );
+
+test(
+  "progress display handles missing metadata",
+  withFakeDOM(async (document) => {
+    const achievements = [
+      {
+        id: "mystery-progress",
+        name: "Mystery",
+        description: "Discover the unknown.",
+        reward: "+1% Curiosity",
+        category: "progression",
+        getProgress: () => ({ current: 1.2345, target: null, precision: 2 }),
+      },
+    ];
+
+    const system = new MockAchievementSystem(achievements);
+    const root = document.createElement("div");
+
+    const panel = new AchievementsPanel(root, system, { storage: new MemoryStorage() });
+    const row = panel.rowsByAchievement.get("mystery-progress");
+
+    assert.ok(row, "row lookup is created for the achievement");
+    assert.equal(
+      row.statusNode.textContent,
+      "Progress: 1.23/?",
+      "status omits undefined metadata and formats numbers with precision"
+    );
+  })
+);
