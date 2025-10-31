@@ -1,5 +1,89 @@
 import { ACTIVITY_CATALOG } from "./training.js";
 
+const HUD_EVENT_ROTATION = [
+  {
+    id: "sky-race",
+    name: "Sky Race Circuit",
+    description: "Test your bird's agility against rival trainers.",
+    cadence: 210,
+    icon: "./assets/ui/event-sky-race.svg",
+    reward: "+15% speed for the next run",
+  },
+  {
+    id: "feather-festival",
+    name: "Feather Festival",
+    description: "Showmanship contest that rewards long combos.",
+    cadence: 255,
+    icon: "./assets/ui/event-feather-festival.svg",
+    reward: "Bonus cosmetics for top performers",
+  },
+  {
+    id: "cosmic-invite",
+    name: "Cosmic Invitational",
+    description: "Elite challenge where modifiers stack faster.",
+    cadence: 300,
+    icon: "./assets/ui/event-cosmic-invite.svg",
+    reward: "Earn 1 prestige egg on victory",
+  },
+];
+
+const ACTIVITY_MODIFIERS = {
+  forage: {
+    id: "mod-forager-focus",
+    name: "Forager's Focus",
+    description: "+8% gains per stack",
+    icon: "./assets/ui/modifier-focus.svg",
+    duration: 45,
+    maxStacks: 4,
+    threshold: 18,
+  },
+  sprint: {
+    id: "mod-tailwind",
+    name: "Tailwind Rush",
+    description: "+6% combo decay window per stack",
+    icon: "./assets/ui/modifier-rush.svg",
+    duration: 35,
+    maxStacks: 5,
+    threshold: 16,
+  },
+  weightlifting: {
+    id: "mod-ironplumage",
+    name: "Iron Plumage",
+    description: "+12% stamina cap per stack",
+    icon: "./assets/ui/modifier-fortify.svg",
+    duration: 55,
+    maxStacks: 3,
+    threshold: 20,
+  },
+  aerialYoga: {
+    id: "mod-grace-cycle",
+    name: "Grace Cycle",
+    description: "+10% recovery efficiency",
+    icon: "./assets/ui/modifier-focus.svg",
+    duration: 40,
+    maxStacks: 3,
+    threshold: 18,
+  },
+  proteinChug: {
+    id: "mod-bulk-up",
+    name: "Bulk Up",
+    description: "+15% strength scaling",
+    icon: "./assets/ui/modifier-fortify.svg",
+    duration: 50,
+    maxStacks: 4,
+    threshold: 22,
+  },
+  meteorSlam: {
+    id: "mod-cosmic-impact",
+    name: "Cosmic Impact",
+    description: "+20% base gains",
+    icon: "./assets/ui/modifier-rush.svg",
+    duration: 65,
+    maxStacks: 3,
+    threshold: 24,
+  },
+};
+
 const BASE_GAIN = 1;
 
 const STAT_CONFIG = {
@@ -79,12 +163,40 @@ export class Stats {
     this.stamina = this.getMaxStamina();
     this.cosmetics = new Set();
 
+    this.activePowerUps = [];
+    this.powerUpModifiers = {
+      gainMultiplier: 1,
+      restRateMultiplier: 1,
+      staminaCostMultiplier: 1,
+      tickRateMultiplier: 1,
+      flatGains: 0,
+    };
+
     this.activityMastery = {};
     Object.keys(ACTIVITY_CATALOG).forEach((key) => {
       this.activityMastery[key] = { level: 0, progress: 0 };
     });
     const defaultActivity = Object.keys(ACTIVITY_CATALOG)[0] || null;
     this.selectedActivity = defaultActivity;
+
+    this._modifierState = new Map();
+    this._modifierProgress = {};
+    Object.keys(ACTIVITY_CATALOG).forEach((key) => {
+      this._modifierProgress[key] = 0;
+    });
+
+    this._comboState = {
+      streak: 0,
+      best: 0,
+      multiplier: 1,
+      decayWindow: 6,
+      timeRemaining: 0,
+      lastActivity: null,
+      lastBreakReason: null,
+    };
+
+    this._eventIndex = 0;
+    this._nextEvent = this._createEventState(HUD_EVENT_ROTATION[0] ?? null);
   }
 
   static get STAT_CONFIG() {
@@ -93,6 +205,216 @@ export class Stats {
 
   static get EGG_UPGRADES() {
     return EGG_UPGRADES;
+  }
+
+  _createEventState(event) {
+    if (!event) {
+      return null;
+    }
+    return {
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      icon: event.icon,
+      reward: event.reward,
+      cadence: event.cadence,
+      timeRemaining: event.cadence,
+    };
+  }
+
+  _ensureModifierProgress(activityKey) {
+    if (this._modifierProgress[activityKey] === undefined) {
+      this._modifierProgress[activityKey] = 0;
+    }
+  }
+
+  tickHudState(deltaSeconds) {
+    if (deltaSeconds <= 0) {
+      return;
+    }
+    this._tickModifiers(deltaSeconds);
+    this._tickCombo(deltaSeconds);
+    this._tickEventTimer(deltaSeconds);
+  }
+
+  _tickModifiers(deltaSeconds) {
+    if (this._modifierState.size === 0) {
+      return;
+    }
+    const expired = [];
+    this._modifierState.forEach((state, id) => {
+      state.timeRemaining = Math.max(0, state.timeRemaining - deltaSeconds);
+      if (state.timeRemaining <= 0) {
+        expired.push(id);
+      }
+    });
+    expired.forEach((id) => this._modifierState.delete(id));
+  }
+
+  _tickCombo(deltaSeconds) {
+    if (this._comboState.streak <= 0) {
+      return;
+    }
+    this._comboState.timeRemaining = Math.max(
+      0,
+      this._comboState.timeRemaining - deltaSeconds
+    );
+    if (this._comboState.timeRemaining <= 0) {
+      this.resetCombo("decay");
+    }
+  }
+
+  _tickEventTimer(deltaSeconds) {
+    if (!this._nextEvent) {
+      return;
+    }
+    this._nextEvent.timeRemaining = Math.max(
+      0,
+      this._nextEvent.timeRemaining - deltaSeconds
+    );
+    if (this._nextEvent.timeRemaining <= 0) {
+      this._advanceEventRotation();
+    }
+  }
+
+  _advanceEventRotation() {
+    const previous = this._nextEvent;
+    this._eventIndex = (this._eventIndex + 1) % HUD_EVENT_ROTATION.length;
+    const nextDefinition = HUD_EVENT_ROTATION[this._eventIndex] ?? null;
+    this._nextEvent = this._createEventState(nextDefinition);
+    return previous;
+  }
+
+  getHudEventRotation() {
+    return HUD_EVENT_ROTATION.slice();
+  }
+
+  getEventTimerSnapshot() {
+    if (!this._nextEvent) {
+      return null;
+    }
+    return {
+      id: this._nextEvent.id,
+      name: this._nextEvent.name,
+      description: this._nextEvent.description,
+      icon: this._nextEvent.icon,
+      reward: this._nextEvent.reward,
+      timeRemaining: this._nextEvent.timeRemaining,
+      totalDuration: this._nextEvent.cadence,
+    };
+  }
+
+  grantModifier(id, config) {
+    if (!id || !config) {
+      return;
+    }
+    const {
+      name,
+      description = "",
+      icon = "",
+      duration = 20,
+      maxStacks = 3,
+      stacks = 1,
+    } = config;
+    const existing = this._modifierState.get(id);
+    if (!existing) {
+      this._modifierState.set(id, {
+        id,
+        name,
+        description,
+        icon,
+        maxStacks,
+        duration,
+        stacks: Math.min(maxStacks, stacks),
+        timeRemaining: duration,
+      });
+    } else {
+      existing.stacks = Math.min(maxStacks, (existing.stacks ?? 0) + stacks);
+      existing.timeRemaining = duration;
+      existing.duration = duration;
+      existing.description = description;
+      existing.icon = icon;
+      existing.maxStacks = maxStacks;
+      existing.name = name;
+    }
+  }
+
+  maybeTriggerTrainingModifier(activityKey) {
+    const modifier = ACTIVITY_MODIFIERS[activityKey];
+    if (!modifier) {
+      return;
+    }
+    this._ensureModifierProgress(activityKey);
+    this._modifierProgress[activityKey] += 1;
+    const threshold = Math.max(1, modifier.threshold ?? 20);
+    if (this._modifierProgress[activityKey] >= threshold) {
+      this._modifierProgress[activityKey] = 0;
+      this.grantModifier(modifier.id, modifier);
+    }
+  }
+
+  getActiveModifiers() {
+    return Array.from(this._modifierState.values()).sort((a, b) => {
+      return b.timeRemaining - a.timeRemaining;
+    });
+  }
+
+  handleTrainingTick({ activityKey, multiplier }) {
+    if (!activityKey) {
+      return;
+    }
+    if (this._comboState.lastActivity === activityKey) {
+      this._comboState.streak += 1;
+    } else {
+      this._comboState.streak = 1;
+      this._comboState.lastActivity = activityKey;
+    }
+    const bonus = Math.max(0, this._comboState.streak - 1);
+    const ramp = 1 + bonus * 0.025;
+    this._comboState.multiplier = Number(Math.min(ramp, 5).toFixed(2));
+    this._comboState.best = Math.max(this._comboState.best, this._comboState.streak);
+    this._comboState.timeRemaining = this._comboState.decayWindow;
+    this._comboState.lastBreakReason = null;
+
+    this.maybeTriggerTrainingModifier(activityKey);
+  }
+
+  breakCombo(reason = "manual") {
+    if (this._comboState.streak <= 0) {
+      this._comboState.lastBreakReason = reason;
+      return;
+    }
+    this.resetCombo(reason);
+  }
+
+  resetCombo(reason = "reset") {
+    this._comboState = {
+      ...this._comboState,
+      streak: 0,
+      multiplier: 1,
+      timeRemaining: 0,
+      lastActivity: null,
+      lastBreakReason: reason,
+    };
+  }
+
+  getComboSnapshot() {
+    return {
+      streak: this._comboState.streak,
+      best: this._comboState.best,
+      multiplier: this._comboState.multiplier,
+      timeRemaining: this._comboState.timeRemaining,
+      decayWindow: this._comboState.decayWindow,
+      lastBreakReason: this._comboState.lastBreakReason,
+    };
+  }
+
+  getHudSnapshot() {
+    return {
+      modifiers: this.getActiveModifiers(),
+      combo: this.getComboSnapshot(),
+      event: this.getEventTimerSnapshot(),
+    };
   }
 
   resetForPrestige() {
@@ -105,10 +427,19 @@ export class Stats {
     this.gains = 0;
     this.runGains = 0;
     this.stamina = this.getMaxStamina();
+    this.clearPowerUps();
     Object.keys(this.activityMastery).forEach((key) => {
       this.activityMastery[key] = { level: 0, progress: 0 };
     });
     this.selectedActivity = Object.keys(ACTIVITY_CATALOG)[0] || this.selectedActivity;
+    this._modifierState.clear();
+    Object.keys(this._modifierProgress).forEach((key) => {
+      this._modifierProgress[key] = 0;
+    });
+    this.resetCombo("prestige");
+    this._comboState.best = 0;
+    this._eventIndex = 0;
+    this._nextEvent = this._createEventState(HUD_EVENT_ROTATION[0] ?? null);
   }
 
   getStrengthValue() {
@@ -128,7 +459,11 @@ export class Stats {
   }
 
   getGainsPerTick() {
-    return BASE_GAIN * this.getStrengthValue() * this.multipliers.gain;
+    const base = BASE_GAIN * this.getStrengthValue() * this.multipliers.gain;
+    const modifiers = this.powerUpModifiers ?? {};
+    const multiplier = modifiers.gainMultiplier ?? 1;
+    const flatBonus = modifiers.flatGains ?? 0;
+    return base * multiplier + flatBonus;
   }
 
   getActivityCatalog() {
@@ -150,6 +485,9 @@ export class Stats {
     }
     if (!this.isActivityUnlocked(key)) {
       return false;
+    }
+    if (this.selectedActivity && this.selectedActivity !== key) {
+      this.breakCombo("activity-change");
     }
     this.selectedActivity = key;
     return true;
@@ -219,7 +557,9 @@ export class Stats {
 
   getStaminaCostForActivity(key = this.getSelectedActivity()) {
     const activity = ACTIVITY_CATALOG[key];
-    return activity ? activity.staminaCost : 1;
+    const base = activity ? activity.staminaCost : 1;
+    const multiplier = this.powerUpModifiers?.staminaCostMultiplier ?? 1;
+    return Math.max(0, base * multiplier);
   }
 
   getActivitySnapshots() {
@@ -245,11 +585,13 @@ export class Stats {
   }
 
   getTicksPerSecond() {
-    return 1 + this.getSpeedValue() / 10;
+    const base = 1 + this.getSpeedValue() / 10;
+    return base * (this.powerUpModifiers?.tickRateMultiplier ?? 1);
   }
 
   getRestRatePerSecond() {
-    return this.getRecoveryValue() * 0.5;
+    const base = this.getRecoveryValue() * 0.5;
+    return base * (this.powerUpModifiers?.restRateMultiplier ?? 1);
   }
 
   getMaxStamina() {
@@ -319,6 +661,145 @@ export class Stats {
     }
     upgrade.apply(this);
     return true;
+  }
+
+  getPowerUpModifiers() {
+    return { ...this.powerUpModifiers };
+  }
+
+  getActivePowerUps() {
+    return this.activePowerUps.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      description: entry.description,
+      remaining: entry.remaining,
+      stacks: entry.stacks,
+      effect: { ...entry.effect },
+      presentation: { ...entry.presentation },
+    }));
+  }
+
+  clearPowerUps() {
+    this.activePowerUps = [];
+    this.recalculatePowerUpModifiers();
+  }
+
+  recalculatePowerUpModifiers() {
+    const modifiers = {
+      gainMultiplier: 1,
+      restRateMultiplier: 1,
+      staminaCostMultiplier: 1,
+      tickRateMultiplier: 1,
+      flatGains: 0,
+    };
+    this.activePowerUps = this.activePowerUps.filter((entry) => entry.remaining > 0);
+    for (const entry of this.activePowerUps) {
+      const stacks = Math.max(1, entry.stacks ?? 1);
+      const effect = entry.effect ?? {};
+      if (effect.gainMultiplier != null) {
+        modifiers.gainMultiplier *= Math.pow(effect.gainMultiplier, stacks);
+      }
+      if (effect.restRateMultiplier != null) {
+        modifiers.restRateMultiplier *= Math.pow(effect.restRateMultiplier, stacks);
+      }
+      if (effect.staminaCostMultiplier != null) {
+        modifiers.staminaCostMultiplier *= Math.pow(effect.staminaCostMultiplier, stacks);
+      }
+      if (effect.tickRateMultiplier != null) {
+        modifiers.tickRateMultiplier *= Math.pow(effect.tickRateMultiplier, stacks);
+      }
+      if (effect.flatGains != null) {
+        modifiers.flatGains += effect.flatGains * stacks;
+      }
+    }
+    this.powerUpModifiers = modifiers;
+  }
+
+  activatePowerUp(activation) {
+    if (!activation) {
+      return { applied: false, reason: "invalid" };
+    }
+    const stacking = {
+      mode: "refresh",
+      maxStacks: 1,
+      refreshOnStack: true,
+      ...activation.stacking,
+    };
+    const existingIndex = this.activePowerUps.findIndex((entry) => entry.id === activation.id);
+    let resultType = "new";
+    let entry;
+
+    if (existingIndex >= 0) {
+      entry = this.activePowerUps[existingIndex];
+      if (stacking.mode === "ignore") {
+        return { applied: false, reason: "ignored", activation };
+      }
+      if (stacking.mode === "stack") {
+        const maxStacks = stacking.maxStacks ?? Number.POSITIVE_INFINITY;
+        if ((entry.stacks ?? 1) < maxStacks) {
+          entry.stacks = (entry.stacks ?? 1) + 1;
+          resultType = "stacked";
+        } else {
+          resultType = "refreshed";
+        }
+        if (stacking.refreshOnStack !== false) {
+          entry.remaining = Math.max(entry.remaining ?? 0, activation.durationSeconds ?? 0);
+        }
+      } else {
+        entry.remaining = activation.durationSeconds ?? entry.remaining;
+        resultType = "refreshed";
+      }
+    } else {
+      entry = {
+        id: activation.id,
+        name: activation.name,
+        description: activation.description,
+        remaining: activation.durationSeconds ?? 0,
+        effect: activation.effect ?? {},
+        presentation: activation.presentation ?? {},
+        stacks: 1,
+      };
+      this.activePowerUps.push(entry);
+    }
+
+    this.recalculatePowerUpModifiers();
+
+    return {
+      applied: true,
+      type: resultType,
+      activation,
+      entry: {
+        id: entry.id,
+        name: entry.name,
+        description: entry.description,
+        remaining: entry.remaining,
+        stacks: entry.stacks,
+        effect: { ...entry.effect },
+        presentation: { ...entry.presentation },
+      },
+    };
+  }
+
+  updatePowerUps(deltaSeconds) {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds <= 0) {
+      return this.getActivePowerUps();
+    }
+    let removed = false;
+    for (const entry of this.activePowerUps) {
+      entry.remaining = Math.max(0, (entry.remaining ?? 0) - deltaSeconds);
+      if (entry.remaining === 0) {
+        removed = true;
+      }
+    }
+    if (removed) {
+      const before = this.activePowerUps.length;
+      this.activePowerUps = this.activePowerUps.filter((entry) => entry.remaining > 0);
+      removed = removed || before !== this.activePowerUps.length;
+    }
+    if (removed) {
+      this.recalculatePowerUpModifiers();
+    }
+    return this.getActivePowerUps();
   }
 
   consumeStamina(amount = 1) {

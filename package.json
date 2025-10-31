@@ -1,6 +1,6 @@
 {
-  "name": "how-to-train-your-bird",
-  "version": "1.0.0",
+  "name": "howtotrainyourbird",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "test": "node --test"
